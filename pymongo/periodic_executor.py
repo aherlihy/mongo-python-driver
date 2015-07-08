@@ -18,6 +18,7 @@ import atexit
 import threading
 import time
 import weakref
+import os, sys
 
 from pymongo import thread_util
 from pymongo.monotonic import time as _time
@@ -42,6 +43,7 @@ class PeriodicExecutor(object):
         self._target = target
         self._stopped = False
         self._thread = None
+        self._really_ready = threading.Event()
 
     def open(self):
         """Start. Multiple calls have no effect.
@@ -52,16 +54,24 @@ class PeriodicExecutor(object):
         started = False
         try:
             started = self._thread and self._thread.is_alive()
+            sys.stdout.write("%s|%s:\tEXC OPEN started=%s\n" % (os.getpid(), self._thread.ident if self._thread is not None else None, started))
         except ReferenceError:
+            sys.stdout.write("%s|%s:\tEXC OPEN ReferenceError"% (os.getpid(), self._thread.ident if self._thread is not None else None))
             # Thread terminated.
             pass
 
         if not started:
+            self._really_ready.clear()
             thread = threading.Thread(target=self._run)
+            old_thread_ident = self._thread.ident if self._thread is not None else None
             thread.daemon = True
             self._thread = weakref.proxy(thread)
             _register_executor(self)
             thread.start()
+            sys.stdout.write("%s|%s(dead):\tEXC OPEN Starting thread=%s\n" % (os.getpid(), old_thread_ident, thread.ident))
+        sys.stdout.write("%s|%s:\tEXC OPEN Finished\n" %(os.getpid(), self._thread.ident if self._thread is not None else None))
+        self._really_ready.wait()
+
 
     def close(self, dummy=None):
         """Stop. To restart, call open().
@@ -87,6 +97,7 @@ class PeriodicExecutor(object):
         self._event.set()
 
     def _run(self):
+        self._really_ready.set()
         while not self._stopped:
             try:
                 if not self._target():

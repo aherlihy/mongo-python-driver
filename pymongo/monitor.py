@@ -14,7 +14,7 @@
 
 """Class to monitor a MongoDB server on a background thread."""
 
-import weakref
+import weakref, threading, sys, os
 
 from bson.codec_options import DEFAULT_CODEC_OPTIONS
 from pymongo import common, helpers, message, periodic_executor
@@ -65,6 +65,7 @@ class Monitor(object):
         # Avoid cycles. When self or topology is freed, stop executor soon.
         self_ref = weakref.ref(self, executor.close)
         self._topology = weakref.proxy(topology, executor.close)
+        # self._ready_event = threading.Event()
 
     def open(self):
         """Start monitoring, or restart after a fork.
@@ -72,6 +73,8 @@ class Monitor(object):
         Multiple calls have no effect.
         """
         self._executor.open()
+        # sys.stdout.write("%s|Monitor Open\n" % os.getpid())
+        # self._ready_event.wait()
 
     def close(self):
         """Close and stop monitoring.
@@ -92,12 +95,17 @@ class Monitor(object):
         self._executor.wake()
 
     def _run(self):
+        # self._ready_event.set()
+        sys.stdout.write("%s|%s:\tMONITOR: _run\n" %(os.getpid(), self._executor._thread.ident))
         try:
             self._server_description = self._check_with_retry()
             self._topology.on_change(self._server_description)
         except ReferenceError:
             # Topology was garbage-collected.
+            sys.stdout.write("%s|%s:\tMONITOR: ReferenceError\n"% (os.getpid(), self._executor._thread.ident))
             self.close()
+        else:
+            sys.stdout.write("%s|%s:\tMONITOR: No error\n" % (os.getpid(), self._executor._thread.ident))
 
     def _check_with_retry(self):
         """Call ismaster once or twice. Reset server's pool on error.
@@ -127,7 +135,7 @@ class Monitor(object):
                 return self._check_once()
             except ReferenceError:
                 raise
-            except Exception:
+            except Exception as error:
                 self._avg_round_trip_time.reset()
                 return default
 

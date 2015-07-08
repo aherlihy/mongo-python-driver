@@ -16,6 +16,7 @@
 
 import random
 import threading
+import sys, os, time
 
 from bson.py3compat import itervalues
 from pymongo import common
@@ -56,8 +57,12 @@ class Topology(object):
 
         No effect if called multiple times.
         """
+
         with self._lock:
+            # sys.stdout.write("\t\tBEFORE topology open() known_servers=%s\n"%self._description.known_servers)
             self._ensure_opened()
+            # time.sleep(2)
+            # sys.stdout.write("\t\tAFTER topology open() known_servers=%s\n"%self._description.known_servers)
 
     def select_servers(self,
                        selector,
@@ -89,7 +94,7 @@ class Topology(object):
             now = _time()
             end_time = now + server_timeout
             server_descriptions = self._apply_selector(selector, address)
-
+            sys.stdout.write("%s|in select_servers: server_descriptions=%s\n" % (os.getpid(), server_descriptions))
             while not server_descriptions:
                 # No suitable servers.
                 if server_timeout == 0 or now > end_time:
@@ -275,6 +280,7 @@ class Topology(object):
             # Restart monitors if we forked since previous call.
             for server in itervalues(self._servers):
                 server.open()
+            # sys.stdout.write("%s|_ensure_opened\n"%os.getpid())
 
     def _reset_server(self, address):
         """Clear our pool for a server and mark it Unknown.
@@ -307,6 +313,7 @@ class Topology(object):
     def _apply_selector(self, selector, address):
         if self._description.topology_type == TOPOLOGY_TYPE.Single:
             # Ignore the selector.
+            sys.stdout.write("%s|in apply_selector known_servers=%s\n"%(os.getpid(), self._description.known_servers))
             return self._description.known_servers
         elif address:
             sd = self._description.server_descriptions().get(address)

@@ -37,6 +37,7 @@ import threading
 import warnings
 import weakref
 from collections import defaultdict
+import sys, os, time
 
 from bson.py3compat import (integer_types,
                             string_type)
@@ -368,8 +369,9 @@ class MongoClient(common.BaseObject):
         # We strongly reference the executor and it weakly references us via
         # this closure. When the client is freed, stop the executor soon.
         self_ref = weakref.ref(self, executor.close)
-        self._kill_cursors_executor = executor
-        executor.open()
+        # self._kill_cursors_executor = executor
+        # executor.open()
+        # time.sleep(2)
 
     def _cache_credentials(self, source, credentials, connect=False):
         """Save a set of authentication credentials.
@@ -655,7 +657,10 @@ class MongoClient(common.BaseObject):
         If this client was created with "connect=False", calling _get_topology
         launches the connection process in the background.
         """
-        self._topology.open()
+        sys.stdout.write("\tBEFORE _get_topology: known_servers=%s\n" %self._topology._description.known_servers)
+        self._topology.open() #THIS IS WHERE KNOWN_SERVERS IS UPDATED
+        # time.sleep(2)
+        sys.stdout.write("\tAFTER _get_topology: known_servers=%s\n" %self._topology._description.known_servers)
         return self._topology
 
     @contextlib.contextmanager
@@ -713,10 +718,9 @@ class MongoClient(common.BaseObject):
           - `address` (optional): Optional address when sending a message
             to a specific server, used for getMore.
         """
-        with self.__lock:
-            # If needed, restart kill-cursors thread after a fork.
-            self._kill_cursors_executor.open()
-
+        # with self.__lock:
+        #     # If needed, restart kill-cursors thread after a fork.
+        #     self._kill_cursors_executor.open()
         topology = self._get_topology()
         if address:
             server = topology.select_server_by_address(address)
