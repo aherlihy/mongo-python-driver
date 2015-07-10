@@ -657,10 +657,7 @@ class MongoClient(common.BaseObject):
         If this client was created with "connect=False", calling _get_topology
         launches the connection process in the background.
         """
-        sys.stdout.write("\tBEFORE _get_topology: known_servers=%s\n" %self._topology._description.known_servers)
-        self._topology.open() #THIS IS WHERE KNOWN_SERVERS IS UPDATED
-        # time.sleep(2)
-        sys.stdout.write("\tAFTER _get_topology: known_servers=%s\n" %self._topology._description.known_servers)
+        self._topology.open()
         return self._topology
 
     @contextlib.contextmanager
