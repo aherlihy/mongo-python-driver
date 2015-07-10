@@ -16,6 +16,7 @@
 
 import copy
 from collections import deque
+import sys, os
 
 from bson import RE_TYPE
 from bson.code import Code

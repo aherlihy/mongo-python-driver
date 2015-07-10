@@ -16,6 +16,7 @@ import contextlib
 import os
 import socket
 import threading
+import sys, thread
 
 from bson import DEFAULT_CODEC_OPTIONS
 from bson.py3compat import u, itervalues
@@ -343,6 +344,7 @@ def _create_connection(address, options):
 
     This is a modified version of create_connection from CPython >= 2.6.
     """
+    # sys.stdout.write("%s|IN CREATE_CONNECTION\n"%os.getpid())
     host, port = address
 
     # Check if dealing with a unix domain socket
@@ -357,6 +359,8 @@ def _create_connection(address, options):
         except socket.error:
             sock.close()
             raise
+        # except Exception as e:
+        #     sys.stdout.write("%s|IN CREATE_CONNECTION: raised other error %s\n"%(os.getpid(), e))
 
     # Don't try IPv6 if we don't support it. Also skip it if host
     # is 'localhost' (::1 is fine). Avoids slow connect issues
@@ -367,6 +371,7 @@ def _create_connection(address, options):
 
     err = None
     for res in socket.getaddrinfo(host, port, family, socket.SOCK_STREAM):
+        # sys.stdout.write("%s|IN CREATE_CONNECTION::HERE\n"%os.getpid())
         af, socktype, proto, dummy, sa = res
         sock = socket.socket(af, socktype, proto)
         try:
@@ -397,7 +402,9 @@ def _configured_socket(address, options):
 
     Sets socket's SSL and timeout options.
     """
+    # sys.stdout.write("%s|IN _CONFIGURED_SOCKET\n"% os.getpid())
     sock = _create_connection(address, options)
+    # sys.stdout.write("%s|IN _CONFIGURED_SOCKET: AFTER CREATE_CONN\n"% os.getpid())
     ssl_context = options.ssl_context
 
     if ssl_context is not None:
@@ -453,10 +460,10 @@ class Pool:
             self.opts.max_pool_size, max_waiters)
 
     def reset(self):
-        with self.lock:
-            self.pool_id += 1
-            self.pid = os.getpid()
-            sockets, self.sockets = self.sockets, set()
+        # with self.lock:
+        self.pool_id += 1
+        self.pid = os.getpid()
+        sockets, self.sockets = self.sockets, set()
 
         for sock_info in sockets:
             sock_info.close()
@@ -469,9 +476,11 @@ class Pool:
         Note that the pool does not keep a reference to the socket -- you
         must call return_socket() when you're done with it.
         """
+        # sys.stdout.write("%s|MADE IT TO CONNECT\n"%os.getpid())
         sock = None
         try:
             sock = _configured_socket(self.address, self.opts)
+            # sys.stdout.write("%s|CONNECT: after _configured_socket\n"%os.getpid())
             if self.handshake:
                 ismaster = IsMaster(command(sock, 'admin', {'ismaster': 1},
                                             False, False,
@@ -481,9 +490,13 @@ class Pool:
                 ismaster = None
             return SocketInfo(sock, self, ismaster, self.address)
         except socket.error as error:
+            # sys.stdout.write("%s|CONNECT: socket.error raised\n"%os.getpid())
             if sock is not None:
                 sock.close()
             _raise_connection_failure(self.address, error)
+        # except Exception as e:
+        #     sys.stdout.write("%s|CONNECT: OTHER ERROR raised:%s\n"%(os.getpid(), e))
+
 
     @contextlib.contextmanager
     def get_socket(self, all_credentials, checkout=False):
@@ -510,7 +523,9 @@ class Pool:
         """
         # First get a socket, then attempt authentication. Simplifies
         # semaphore management in the face of network errors during auth.
+        # sys.stdout.write("%s|%s:\tGET_SOCKET\n"%(os.getpid(), thread.get_ident()))
         sock_info = self._get_socket_no_auth()
+        # sys.stdout.write("%s|%s:\tGET_SOCKET: After get_socket_no_auth\n"%(os.getpid(), thread.get_ident()))
         try:
             sock_info.check_auth(all_credentials)
             yield sock_info
@@ -533,6 +548,7 @@ class Pool:
         # Get a free socket or create one.
         if not self._socket_semaphore.acquire(
                 True, self.opts.wait_queue_timeout):
+            # sys.stdout.write("RAISING (semaphore)\n")
             self._raise_wait_queue_timeout()
 
         # We've now acquired the semaphore and must release it on error.
@@ -540,12 +556,11 @@ class Pool:
             try:
                 # set.pop() isn't atomic in Jython less than 2.7, see
                 # http://bugs.jython.org/issue1854
-                with self.lock:
-                    sock_info, from_pool = self.sockets.pop(), True
+                # with self.lock:
+                sock_info, from_pool = self.sockets.pop(), True
             except KeyError:
                 # Can raise ConnectionFailure or CertificateError.
                 sock_info, from_pool = self.connect(), False
-
             if from_pool:
                 # Can raise ConnectionFailure.
                 sock_info = self._check(sock_info)
@@ -565,8 +580,8 @@ class Pool:
             if sock_info.pool_id != self.pool_id:
                 sock_info.close()
             elif not sock_info.closed:
-                with self.lock:
-                    self.sockets.add(sock_info)
+                # with self.lock:
+                self.sockets.add(sock_info)
 
         self._socket_semaphore.release()
 

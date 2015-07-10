@@ -54,22 +54,21 @@ class PeriodicExecutor(object):
         started = False
         try:
             started = self._thread and self._thread.is_alive()
-            sys.stdout.write("%s|%s:\tEXC OPEN started=%s\n" % (os.getpid(), self._thread.ident if self._thread is not None else None, started))
+            # sys.stdout.write("%s|%s:\tEXC OPEN started=%s\n" % (os.getpid(), self._thread.ident if self._thread is not None else None, started))
         except ReferenceError:
-            sys.stdout.write("%s|%s:\tEXC OPEN ReferenceError"% (os.getpid(), self._thread.ident if self._thread is not None else None))
+            # sys.stdout.write("%s|%s:\tEXC OPEN ReferenceError"% (os.getpid(), self._thread.ident if self._thread is not None else None))
             # Thread terminated.
             pass
-
         if not started:
             self._really_ready.clear()
             thread = threading.Thread(target=self._run)
             old_thread_ident = self._thread.ident if self._thread is not None else None
             thread.daemon = True
-            self._thread = weakref.proxy(thread)
+            self._thread = thread
             _register_executor(self)
             thread.start()
-            sys.stdout.write("%s|%s(dead):\tEXC OPEN Starting thread=%s\n" % (os.getpid(), old_thread_ident, thread.ident))
-        sys.stdout.write("%s|%s:\tEXC OPEN Finished\n" %(os.getpid(), self._thread.ident if self._thread is not None else None))
+            # sys.stdout.write("%s|%s(dead):\tEXC OPEN Starting thread=%s\n" % (os.getpid(), old_thread_ident, thread.ident))
+        # sys.stdout.write("%s|%s:\tEXC OPEN Finished\n" %(os.getpid(), self._thread.ident if self._thread is not None else None))
         self._really_ready.wait()
 
 

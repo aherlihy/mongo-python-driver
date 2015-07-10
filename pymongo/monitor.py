@@ -73,8 +73,6 @@ class Monitor(object):
         Multiple calls have no effect.
         """
         self._executor.open()
-        # sys.stdout.write("%s|Monitor Open\n" % os.getpid())
-        # self._ready_event.wait()
 
     def close(self):
         """Close and stop monitoring.
@@ -96,14 +94,19 @@ class Monitor(object):
 
     def _run(self):
         # self._ready_event.set()
-        sys.stdout.write("%s|%s:\tMONITOR: _run\n" %(os.getpid(), self._executor._thread.ident))
+
         try:
+            sys.stdout.write("%s|%s:\tMONITOR: Before check_with_retry\n" %(os.getpid(), self._executor._thread.ident))
             self._server_description = self._check_with_retry()
+            sys.stdout.write("%s|%s:\tMONITOR: After check_with_retry\n" %(os.getpid(), self._executor._thread.ident))
             self._topology.on_change(self._server_description)
+            sys.stdout.write("%s|%s:\tMONITOR: After check_with_retry\n" %(os.getpid(), self._executor._thread.ident))
         except ReferenceError:
             # Topology was garbage-collected.
             sys.stdout.write("%s|%s:\tMONITOR: ReferenceError\n"% (os.getpid(), self._executor._thread.ident))
             self.close()
+        except Exception as e:
+            sys.stdout.write("%s|:\tMONITOR: Different error:%s\n"%(os.getpid(), e))
         else:
             sys.stdout.write("%s|%s:\tMONITOR: No error\n" % (os.getpid(), self._executor._thread.ident))
 
@@ -132,10 +135,13 @@ class Monitor(object):
 
             # Try a second and final time. If it fails return original error.
             try:
+                # sys.stdout.write("%s|%s:\tCHECK_W_RETRY: Before check_once\n" % (os.getpid(), self._executor._thread.ident))
                 return self._check_once()
             except ReferenceError:
+                # sys.stdout.write("%s|%s:\tCHECK_W_RETRY: ReferenceError\n" % (os.getpid(), self._executor._thread.ident))
                 raise
             except Exception as error:
+                # sys.stdout.write("%s|%s:\tCHECK_W_RETRY: Different Error:%s\n" % (os.getpid(), self._executor._thread.ident, error))
                 self._avg_round_trip_time.reset()
                 return default
 
@@ -144,7 +150,9 @@ class Monitor(object):
 
         Returns a ServerDescription, or raises an exception.
         """
+        # sys.stdout.write("%s|%s:\tCHECK_ONCE: Before get_socket\n" % (os.getpid(), self._executor._thread.ident))
         with self._pool.get_socket({}) as sock_info:
+            # sys.stdout.write("%s|%s:\tCHECK_ONCE: Got Socket:%s\n" % (os.getpid(), self._executor._thread.ident), sock_info)
             response, round_trip_time = self._check_with_socket(sock_info)
             self._avg_round_trip_time.add_sample(round_trip_time)
             sd = ServerDescription(
