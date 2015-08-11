@@ -68,6 +68,29 @@ class GridFS(object):
         self.__files = self.__collection.files
         self.__chunks = self.__collection.chunks
 
+    def __is_secondary(self):
+        return not self.__database.client._is_writable()
+
+    def __create_index(self, coll, key, **kwargs):
+        try:
+            if not self.__is_secondary():
+                coll.create_index(key, **kwargs)
+        except OperationFailure as exc:
+            if not (exc.code in UNAUTHORIZED_CODES
+                    or "authorized" in str(exc)):
+                raise exc
+
+
+    def __ensure_index_files_id(self):
+            self.__create_index(self.__chunks,
+                                [("files_id", ASCENDING), ("n", ASCENDING)],
+                                unique=True)
+
+    def __ensure_index_filename(self):
+            self.__create_index(self.__files,
+                                [("filename", ASCENDING),
+                                 ("uploadDate", DESCENDING)])
+
     def new_file(self, **kwargs):
         """Create a new file in GridFS.
 
