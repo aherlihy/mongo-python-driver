@@ -21,14 +21,14 @@ from collections import deque
 from bson.py3compat import integer_types
 from pymongo import helpers, monitoring
 from pymongo.errors import AutoReconnect, NotMasterError, OperationFailure
-from pymongo.message import _CursorAddress, _GetMore
+from pymongo.message import CursorAddress, _GetMore, _Query
 
 
 class CommandCursor(object):
     """A cursor / iterator over command cursors.
     """
 
-    def __init__(self, collection, cursor_info, address, retrieved=0):
+    def __init__(self, collection, cursor_info, address, retrieved=0, slave_ok=None): #TODO: add query_flags argument docs
         """Create a new command cursor.
         """
         self.__collection = collection
@@ -38,6 +38,7 @@ class CommandCursor(object):
         self.__retrieved = retrieved
         self.__batch_size = 0
         self.__killed = (self.__id == 0)
+        self.__query_flags = 4 if slave_ok else 0 #TODO: warn if not given
 
         if "ns" in cursor_info:
             self.__ns = cursor_info["ns"]
@@ -53,7 +54,7 @@ class CommandCursor(object):
         """
         if self.__id and not self.__killed:
             self.__collection.database.client.close_cursor(
-                self.__id, _CursorAddress(self.__address, self.__ns))
+                self.__id, CursorAddress(self.__address, self.__ns))
         self.__killed = True
 
     def close(self):
@@ -105,12 +106,15 @@ class CommandCursor(object):
         publish = monitoring.enabled()
         cmd_duration = response.duration
         rqst_id = response.request_id
+
         if publish:
             start = datetime.datetime.now()
         try:
+            unpack_cursor_response = response.max_wire_version >= 4
             doc = helpers._unpack_response(response.data,
                                            self.__id,
-                                           self.__collection.codec_options)
+                                           self.__collection.codec_options,
+                                           unpack_cursor_response)
         except OperationFailure as exc:
             self.__killed = True
 
@@ -162,7 +166,13 @@ class CommandCursor(object):
 
         if self.__id:  # Get More
             self.__send_message(
-                _GetMore(self.__ns, self.__batch_size, self.__id))
+                _GetMore(self.__query_flags,
+                         self.__collection.database.name,
+                         self.__collection.name,
+                         self.__batch_size,
+                         self.__id,
+                         self.__collection.codec_options,
+                         0)) #TODO: maxTimeoutMS passed to initial query?
 
         else:  # Cursor id is zero nothing else to return
             self.__killed = True

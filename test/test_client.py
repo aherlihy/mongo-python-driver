@@ -42,6 +42,7 @@ from pymongo.errors import (AutoReconnect,
                             CursorNotFound,
                             NetworkTimeout,
                             InvalidURI)
+from pymongo.message import CursorAddress
 from pymongo.mongo_client import MongoClient
 from pymongo.pool import SocketInfo
 from pymongo.read_preferences import ReadPreference
@@ -707,7 +708,7 @@ class TestClient(IntegrationTest):
         new_sock_info = next(iter(pool.sockets))
         self.assertEqual(old_sock_info, new_sock_info)
 
-    def test_kill_cursors(self):
+    def test_kill_cursors_with_address(self):
         if (client_context.is_mongos
                 and not client_context.version.at_least(2, 4, 7)):
             # Old mongos sends incorrectly formatted error response when
@@ -720,7 +721,9 @@ class TestClient(IntegrationTest):
         self.collection.insert_many([{'_id': i} for i in range(200)])
         cursor = self.collection.find().batch_size(1)
         next(cursor)
-        self.client.kill_cursors([cursor.cursor_id])
+        self.client.kill_cursors(
+            [cursor.cursor_id],
+            CursorAddress(self.client.address, self.collection.full_name))
 
         # Prevent killcursors from reaching the server while a getmore is in
         # progress -- the server logs "Assertion: 16089:Cannot kill active
@@ -837,7 +840,7 @@ class TestClient(IntegrationTest):
                                  serverSelectionTimeoutMS=100,
                                  replicaSet=client_context.replica_set_name)
             client._send_message_with_response(
-                operation=message._GetMore('collection', 101, 1234),
+                operation=message._GetMore(0, 'pymongo_test', 'collection', 101, 1234, client.codec_options),
                 address=('not-a-member', 27017))
 
 

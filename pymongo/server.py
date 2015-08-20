@@ -18,6 +18,7 @@ import contextlib
 
 from datetime import datetime
 
+import bson
 from pymongo import monitoring
 from pymongo.response import Response, ExhaustResponse
 from pymongo.server_type import SERVER_TYPE
@@ -66,6 +67,22 @@ class Server(object):
         with self.get_socket(all_credentials) as sock_info:
             sock_info.send_message(data, max_doc_size)
 
+    def send_message_read_result(self, message, all_credentials):
+        """Send an unacknowledged message to MongoDB that returns a result.
+
+        Can raise ConnectionFailure.
+
+        :Parameters:
+          - `message`: (request_id, data).
+          - `all_credentials`: dict, maps auth source to MongoCredential.
+        """
+        request_id, data, max_doc_size = self._split_message(message)
+        with self.get_socket(all_credentials) as sock_info:
+            sock_info.send_message(data, max_doc_size)
+            # Since it's called async we don't want to interrupt another message.
+            sock_info.receive_message(1, request_id)
+
+
     def send_message_with_response(
             self,
             operation,
@@ -84,14 +101,15 @@ class Server(object):
             It is returned along with its Pool in the Response.
         """
         with self.get_socket(all_credentials, exhaust) as sock_info:
-
             duration = None
             publish = monitoring.enabled()
             if publish:
                 start = datetime.now()
 
+            use_find_cmd = (sock_info.max_wire_version >= 4 and not exhaust)
+
             message = operation.get_message(
-                set_slave_okay, sock_info.is_mongos)
+                set_slave_okay, sock_info.is_mongos, use_find_cmd)
             request_id, data, max_doc_size = self._split_message(message)
 
             if publish:
@@ -114,13 +132,15 @@ class Server(object):
                     socket_info=sock_info,
                     pool=self._pool,
                     duration=duration,
-                    request_id=request_id)
+                    request_id=request_id,
+                    max_wire_version=sock_info.max_wire_version)
             else:
                 return Response(
                     data=response_data,
                     address=self._description.address,
                     duration=duration,
-                    request_id=request_id)
+                    request_id=request_id,
+                    max_wire_version=sock_info.max_wire_version)
 
     @contextlib.contextmanager
     def get_socket(self, all_credentials, checkout=False):

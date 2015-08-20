@@ -1045,10 +1045,14 @@ class TestCursor(IntegrationTest):
 
         def find():
             list(self.db.test.find().comment('foo'))
-            op = self.db.system.profile.find({'ns': 'pymongo_test.test',
-                                              'op': 'query',
-                                              'query.$comment': 'foo'})
-            self.assertEqual(op.count(), 1)
+            op_query = self.db.system.profile.find({'ns': 'pymongo_test.test',
+                                                    'op': 'query',
+                                                    'query.$comment': 'foo'})
+            find_cmd = self.db.system.profile.find({'command.comment':'foo',
+                                                    'command.find':'test'})
+
+            # To work with all wire versions
+            self.assertEqual(op_query.count() + find_cmd.count(), 1)
 
         run_with_profiling(find)
 

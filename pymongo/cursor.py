@@ -32,7 +32,7 @@ from pymongo.errors import (AutoReconnect,
                             InvalidOperation,
                             NotMasterError,
                             OperationFailure)
-from pymongo.message import _CursorAddress, _GetMore, _Query
+from pymongo.message import CursorAddress, _GetMore, _Query
 from pymongo.read_preferences import ReadPreference
 
 _QUERY_OPTIONS = {
@@ -271,7 +271,7 @@ class Cursor(object):
             else:
                 self.__collection.database.client.close_cursor(
                     self.__id,
-                    _CursorAddress(
+                    CursorAddress(
                         self.__address, self.__collection.full_name))
         if self.__exhaust and self.__exhaust_mgr:
             self.__exhaust_mgr.close()
@@ -804,6 +804,7 @@ class Cursor(object):
         """
         client = self.__collection.database.client
         publish = monitoring.enabled()
+        unpack_cursor_result = False
 
         if operation:
             kwargs = {
@@ -826,6 +827,9 @@ class Cursor(object):
                 data = response.data
                 cmd_duration = response.duration
                 rqst_id = response.request_id
+                is_explain = isinstance(operation, _Query) and "$explain" in operation.spec
+                if response.max_wire_version >= 4 and not self.__exhaust and not is_explain: #TODO: $explain
+                    unpack_cursor_result = True
             except AutoReconnect:
                 # Don't try to send kill cursors on another socket
                 # or to another server. It can cause a _pinValue
@@ -861,7 +865,8 @@ class Cursor(object):
         try:
             doc = helpers._unpack_response(response=data,
                                            cursor_id=self.__id,
-                                           codec_options=self.__codec_options)
+                                           codec_options=self.__codec_options,
+                                           unpack_cursor_result=unpack_cursor_result)
         except OperationFailure as exc:
             self.__killed = True
 
@@ -945,7 +950,8 @@ class Cursor(object):
                 else:
                     ntoreturn = self.__limit
             self.__send_message(_Query(self.__query_flags,
-                                       self.__collection.full_name,
+                                       self.__collection.database.name,
+                                       self.__collection.name,
                                        self.__skip,
                                        ntoreturn,
                                        self.__query_spec(),
@@ -968,9 +974,12 @@ class Cursor(object):
             if self.__exhaust:
                 self.__send_message(None)
             else:
-                self.__send_message(_GetMore(self.__collection.full_name,
+                self.__send_message(_GetMore(self.__query_flags,
+                                             self.__collection.database.name,
+                                             self.__collection.name,
                                              limit,
                                              self.__id,
+                                             self.__codec_options,
                                              self.__max_time_ms))
 
         else:  # Cursor id is zero nothing else to return

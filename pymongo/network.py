@@ -66,7 +66,9 @@ def command(sock, dbname, spec, slave_ok, is_mongos,
     publish = user and monitoring.enabled()
     if publish:
         start = datetime.datetime.now()
-
+    # print("\nCMD PASSING (flags=%s, collection_name=%s, num_to_skip=%s,"
+    #       " num_to_return=%s, query=%s, field_selector=%s, opts=%s)\n"
+    #       % (flags, ns, 0, -1, spec, None, codec_options))
     request_id, msg, _ = message.query(flags, ns, 0, -1, spec,
                                        None, codec_options, check_keys)
 
@@ -79,7 +81,7 @@ def command(sock, dbname, spec, slave_ok, is_mongos,
     response = receive_message(sock, 1, request_id)
     try:
         unpacked = helpers._unpack_response(
-            response, codec_options=codec_options)
+            response, codec_options=codec_options) # expected to be in 1 doc
 
         response_doc = unpacked['data'][0]
         if check:

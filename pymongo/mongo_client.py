@@ -43,6 +43,7 @@ from bson.py3compat import (integer_types,
 from bson.son import SON
 from pymongo import (common,
                      database,
+                     helpers,
                      message,
                      monitoring,
                      periodic_executor,
@@ -57,6 +58,7 @@ from pymongo.errors import (AutoReconnect,
                             NetworkTimeout,
                             NotMasterError,
                             OperationFailure)
+from pymongo.message import CursorAddress
 from pymongo.read_preferences import ReadPreference
 from pymongo.server_selectors import (writable_preferred_server_selector,
                                       writable_server_selector)
@@ -859,8 +861,13 @@ class MongoClient(common.BaseObject):
           - `cursor_id`: id of cursor to close
           - `address` (optional): (host, port) pair of the cursor's server.
             If it is not provided, the client attempts to close the cursor on
-            the primary or standalone, or a mongos server.
+            the primary or standalone, or a mongos server. If using
+            server >= 3.2 address cannot be None and must be an instance of
+            `CursorAddress`.
 
+        .. versionchanged:: 3.2
+           If using server >= 3.2, address cannot be None and MUST be a
+           `CursorAddress`.
         .. versionchanged:: 3.0
            Added ``address`` parameter.
         """
@@ -869,7 +876,7 @@ class MongoClient(common.BaseObject):
 
         self.__cursor_manager.close(cursor_id, address)
 
-    def kill_cursors(self, cursor_ids, address=None):
+    def kill_cursors(self, cursor_ids, address=None, namespace=None):
         """Send a kill cursors message soon with the given ids.
 
         Raises :class:`TypeError` if `cursor_ids` is not an instance of
@@ -885,6 +892,8 @@ class MongoClient(common.BaseObject):
           - `address` (optional): (host, port) pair of the cursor's server.
             If it is not provided, the client attempts to close the cursor on
             the primary or standalone, or a mongos server.
+          - `namespace`: the namespace that the cursors were created in. Should
+            be a string with the format <db name>.<collection name>.
 
         .. versionchanged:: 3.0
            Now accepts an `address` argument. Schedules the cursors to be
@@ -895,7 +904,7 @@ class MongoClient(common.BaseObject):
             raise TypeError("cursor_ids must be a list")
 
         # "Atomic", needs no lock.
-        self.__kill_cursors_queue.append((address, cursor_ids))
+        self.__kill_cursors_queue.append((address, cursor_ids)) #add ns option to tuple
 
     # This method is run periodically by a background thread.
     def _process_kill_cursors_queue(self):
@@ -929,7 +938,12 @@ class MongoClient(common.BaseObject):
 
                     if publish:
                         start = datetime.datetime.now()
-                    data = message.kill_cursors(cursor_ids)
+
+                    use_cmd = server.description.max_wire_version >= 4
+
+                    data = message.kill_cursors(cursor_ids, address.namespace, self.__options.codec_options, use_cmd)
+                    #TODO: change to send_message_with_response? Need to check return?
+
                     if publish:
                         duration = datetime.datetime.now() - start
                         try:
@@ -941,7 +955,13 @@ class MongoClient(common.BaseObject):
                         monitoring.publish_command_start(
                             command, dbname, data[0], address)
                         start = datetime.datetime.now()
-                    server.send_message(data, self.__all_credentials)
+                    if use_cmd and not isinstance(address, CursorAddress):
+                        warnings.warn("Address must be in instance of CursorAddress for server > 3.2")
+                    elif use_cmd:
+                        server.send_message_read_result(data, self.__all_credentials)
+                    else:
+                        server.send_message(data, self.__all_credentials)
+
                     if publish:
                         duration = (datetime.datetime.now() - start) + duration
                         # OP_KILL_CURSORS returns no reply, fake one.
@@ -1074,9 +1094,17 @@ class MongoClient(common.BaseObject):
     def unlock(self):
         """Unlock a previously locked server.
         """
-        coll = self.admin.get_collection(
-            "$cmd.sys.unlock", read_preference=ReadPreference.PRIMARY)
-        coll.find_one()
+        use_cmd = self._server_property("max_wire_version", 0) >= 4
+        if use_cmd:
+            try: # TODO: send directly to server or use cmd helper, then ignore error?
+                self.admin.command(SON([("fsyncUnlock", 1)]))
+            except OperationFailure as exc:
+                if "not locked" not in str(exc):
+                    raise
+        else:
+            coll = self.admin.get_collection(
+                "$cmd.sys.unlock", read_preference=ReadPreference.PRIMARY)
+            coll.find_one()
 
     def __enter__(self):
         return self

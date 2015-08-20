@@ -462,10 +462,10 @@ class Database(common.BaseObject):
                 cmd["filter"] = criteria
             coll = self["$cmd"]
             cursor = self._command(sock_info, cmd, slave_okay)["cursor"]
-            return CommandCursor(coll, cursor, sock_info.address)
+            return CommandCursor(coll, cursor, sock_info.address, slave_ok=slave_okay)
         else:
             coll = self["system.namespaces"]
-            res = _first_batch(sock_info, coll.full_name,
+            res = _first_batch(sock_info, coll.database.name, coll.name,
                                criteria, 0, slave_okay,
                                CodecOptions(), ReadPreference.PRIMARY)
             data = res["data"]
@@ -475,7 +475,7 @@ class Database(common.BaseObject):
                 "ns": coll.full_name,
             }
             # Need to tell the cursor how many docs were in the first batch.
-            return CommandCursor(coll, cursor, sock_info.address, len(data))
+            return CommandCursor(coll, cursor, sock_info.address, len(data), slave_ok=slave_okay)
 
     def collection_names(self, include_system_collections=True):
         """Get a list of all the collection names in this database.
@@ -585,6 +585,11 @@ class Database(common.BaseObject):
           - `include_all` (optional): if ``True`` also list currently
             idle operations in the result
         """
+        # TODO: check that only can be run on admin DB?
+        use_cmd = self.__client._server_property("max_wire_version") >= 4
+        if use_cmd:
+            return self.command(SON([("currentOp", 1), ("$all", include_all)]), read_preference=ReadPreference.PRIMARY)
+
         coll = self.get_collection(
             "$cmd.sys.inprog", read_preference=ReadPreference.PRIMARY)
         if include_all:

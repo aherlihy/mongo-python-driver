@@ -26,7 +26,7 @@ import struct
 
 import bson
 from bson.codec_options import DEFAULT_CODEC_OPTIONS
-from bson.py3compat import b, StringIO
+from bson.py3compat import b, StringIO, u
 from bson.son import SON
 try:
     from pymongo import _cmessage
@@ -57,7 +57,7 @@ _OP_MAP = {
     _UPDATE: b'\x04updates\x00\x00\x00\x00\x00',
     _DELETE: b'\x04deletes\x00\x00\x00\x00\x00',
 }
-
+_UJOIN = u("%s.%s")
 
 def _randint():
     """Generate a pseudo random 32 bit integer."""
@@ -192,14 +192,15 @@ def _gen_get_more_command(cursor_id, coll, batch_size, max_time_ms):
 class _Query(object):
     """A query operation."""
 
-    __slots__ = ('flags', 'ns', 'ntoskip', 'ntoreturn', 'spec', 'fields',
+    __slots__ = ('flags', 'db', 'coll', 'ntoskip', 'ntoreturn', 'spec', 'fields',
                  'codec_options', 'read_preference', 'limit', 'batch_size',
                  'name')
 
-    def __init__(self, flags, ns, ntoskip, ntoreturn, spec, fields,
+    def __init__(self, flags, db, coll, ntoskip, ntoreturn, spec, fields,
                  codec_options, read_preference, limit, batch_size):
         self.flags = flags
-        self.ns = ns
+        self.db = db
+        self.coll = coll
         self.ntoskip = ntoskip
         self.ntoreturn = ntoreturn
         self.spec = spec
@@ -215,54 +216,92 @@ class _Query(object):
 
         Should be called *after* get_message.
         """
-        dbn, coll = self.ns.split('.', 1)
         if '$explain' in self.spec:
             self.name = 'explain'
             return _gen_explain_command(
-                coll, self.spec, self.fields, self.ntoskip,
-                self.limit, self.batch_size, self.flags), dbn
-        return _gen_find_command(coll, self.spec, self.fields, self.ntoskip,
-                                 self.limit, self.batch_size, self.flags), dbn
+                self.coll, self.spec, self.fields, self.ntoskip,
+                self.limit, self.batch_size, self.flags), self.db
+        return _gen_find_command(self.coll, self.spec, self.fields, self.ntoskip,
+                                 self.limit, self.batch_size, self.flags), self.db
 
-    def get_message(self, set_slave_ok, is_mongos):
+    def get_message(self, set_slave_ok, is_mongos, use_cmd):
         """Get a query message, possibly setting the slaveOk bit."""
-        if is_mongos:
-            self.spec = _maybe_add_read_preference(self.spec,
-                                                   self.read_preference)
         if set_slave_ok:
             # Set the slaveOk bit.
             flags = self.flags | 4
         else:
             flags = self.flags
-        return query(flags, self.ns, self.ntoskip, self.ntoreturn,
-                     self.spec, self.fields, self.codec_options)
+
+        ns = _UJOIN % (self.db, self.coll)
+        spec = self.spec
+        ntoreturn = self.ntoreturn
+
+        if use_cmd and "$explain" not in spec: #TODO:$explain
+            ns = _UJOIN % (self.db, "$cmd")
+            spec = self.as_command()[0]
+            # Special case for negative limit.
+            if spec.get("limit", 0) < 0:
+                spec["singleBatch"] = True
+                spec["limit"] = 0 - spec["limit"]
+            ntoreturn = 1  # All DB commands return 1 document
+
+        if is_mongos:
+            spec = _maybe_add_read_preference(spec,
+                                              self.read_preference)
+
+        print("\nFIND PASSING (flags=%s, collection_name=%s, num_to_skip=%s,"
+              " num_to_return=%s, query=%s, field_selector=%s, opts=%s)\n" %
+              (flags, ns, self.ntoskip, ntoreturn, spec, self.fields,
+               self.codec_options))
+        return query(flags, ns, self.ntoskip, ntoreturn,
+                     spec, self.fields, self.codec_options)
 
 
 class _GetMore(object):
     """A getmore operation."""
 
-    __slots__ = ('ns', 'ntoreturn', 'cursor_id', 'max_time_ms')
+    __slots__ = ('db', 'coll', 'ntoreturn', 'cursor_id', 'max_time_ms', 'flags', 'codec_options')
 
     name = 'getMore'
 
-    def __init__(self, ns, ntoreturn, cursor_id, max_time_ms=None):
-        self.ns = ns
+    def __init__(self, flags, db, coll, ntoreturn, cursor_id, codec_options,
+                 max_time_ms=None):
+        self.db = db
+        self.coll = coll
         self.ntoreturn = ntoreturn
         self.cursor_id = cursor_id
+        self.flags = flags
+        self.codec_options = codec_options
         self.max_time_ms = max_time_ms
 
     def as_command(self):
         """Return a getMore command document for this query."""
-        dbn, coll = self.ns.split('.', 1)
         return _gen_get_more_command(
-            self.cursor_id, coll, self.ntoreturn, self.max_time_ms), dbn
+            self.cursor_id, self.coll, self.ntoreturn, self.max_time_ms), self.db
 
-    def get_message(self, dummy0, dummy1):
+    def get_message(self, set_slave_ok, is_mongos, use_cmd):
         """Get a getmore message."""
-        return get_more(self.ns, self.ntoreturn, self.cursor_id)
+        if set_slave_ok:
+            # Set the slaveOk bit.
+            flags =  self.flags | 4
+        else:
+            flags = self.flags
+
+        ns = _UJOIN % (self.db, self.coll)
+
+        if use_cmd:
+            ns = _UJOIN % (self.db, "$cmd")
+            spec = self.as_command()[0]
+
+            print("\nGETMORE PASSING (flags=%s, ns=%s, num_to_skip=%s,"
+                  " num_to_return=%s, query=%s, field_selector=%s, opts=%s)\n" %
+                  (flags, ns, 0, 1, spec, {}, self.codec_options))
+            return query(flags, ns, 0, 1, spec, {}, self.codec_options)
+
+        return get_more(ns, self.ntoreturn, self.cursor_id)
 
 
-class _CursorAddress(tuple):
+class CursorAddress(tuple):
     """The server address (host, port) of a cursor, with namespace property."""
 
     def __new__(cls, address, namespace):
@@ -423,9 +462,21 @@ def delete(collection_name, spec, safe,
         return (request_id, remove_message, len(encoded))
 
 
-def kill_cursors(cursor_ids):
+def kill_cursors(cursor_ids, namespace, codec_options, use_cmd):
     """Get a **killCursors** message.
     """
+    if use_cmd:
+        db, coll = namespace.split('.', 1)
+        ns = _UJOIN % (db, "$cmd")
+
+        spec = SON([('killCursors', coll),
+                    ('cursors', cursor_ids)])
+
+        # print("\nMSG PASSING (flags=%s, ns=%s, num_to_skip=%s,"
+        #       " num_to_return=%s, query=%s, field_selector=%s, opts=%s)\n" %
+        #       (4, ns, 0, 1, spec, {}, codec_options))
+        # Set query_flags to always be slave_ok=True
+        return query(4, ns, 0, 1, spec, {}, codec_options)
     data = _ZERO_32
     data += struct.pack("<i", len(cursor_ids))
     for cursor_id in cursor_ids:

@@ -45,8 +45,13 @@ class CursorManager(object):
 
         :Parameters:
           - `cursor_id`: cursor id to close
-          - `address`: the cursor's server's (host, port) pair
+          - `address`: the cursor's server's (host, port) pair. If using server
+            version >= 3.2 address cannot be None and MUST be an instance of
+            `CursorAddress`.
 
+        .. versionchanged:: 3.2
+           If using server >= 3.2 address MUST not be a `CursorAddress` and
+           not None.
         .. versionchanged:: 3.0
            Now requires an `address` argument.
         """

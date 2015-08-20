@@ -1046,7 +1046,7 @@ class Collection(common.BaseObject):
         with self._socket_for_reads() as (sock_info, slave_ok):
             result = self._command(sock_info, cmd, slave_ok)
 
-        return [CommandCursor(self, cursor['cursor'], sock_info.address)
+        return [CommandCursor(self, cursor['cursor'], sock_info.address, slave_ok=slave_ok)
                 for cursor in result['cursors']]
 
     def _count(self, cmd):
@@ -1341,11 +1341,11 @@ class Collection(common.BaseObject):
                 cursor = self._command(sock_info, cmd, slave_ok,
                                        ReadPreference.PRIMARY,
                                        codec_options)["cursor"]
-                return CommandCursor(coll, cursor, sock_info.address)
+                return CommandCursor(coll, cursor, sock_info.address, slave_ok=slave_ok)
             else:
                 namespace = _UJOIN % (self.__database.name, "system.indexes")
                 res = helpers._first_batch(
-                    sock_info, namespace, {"ns": self.__full_name},
+                    sock_info, self.__database.name, "system.indexes", {"ns": self.__full_name},
                     0, slave_ok, codec_options, ReadPreference.PRIMARY)
                 data = res["data"]
                 cursor = {
@@ -1357,7 +1357,7 @@ class Collection(common.BaseObject):
                 # technically have to pass len(data) here. There will never be
                 # an OP_GET_MORE call.
                 return CommandCursor(
-                    coll, cursor, sock_info.address, len(data))
+                    coll, cursor, sock_info.address, len(data), slave_ok=slave_ok)
 
     def index_information(self):
         """Get information on this collection's indexes.
@@ -1516,7 +1516,7 @@ class Collection(common.BaseObject):
                     "ns": self.full_name,
                 }
             return CommandCursor(
-                self, cursor, sock_info.address).batch_size(batch_size or 0)
+                self, cursor, sock_info.address, slave_ok=slave_ok).batch_size(batch_size or 0)
 
     # key and condition ought to be optional, but deprecation
     # would be painful as argument order would have to change.

@@ -84,7 +84,33 @@ def _index_document(index_list):
     return index
 
 
-def _unpack_response(response, cursor_id=None, codec_options=CodecOptions()):
+def _unpack_cursor_result(result, response, codec_options):
+    # DB commands always return 1 result
+
+    cursor = result["data"][0]
+
+    if not cursor["ok"]:
+        if "Cursor not found" in cursor.get("errmsg"):
+            raise CursorNotFound(cursor.get("errmsg"), cursor.get("code"), cursor)
+        raise OperationFailure(
+            cursor.get("errmsg"), cursor.get("code"), cursor)
+
+    # Explain. TODO: $explain
+    if "queryPlanner" in cursor:
+        result["data"] = cursor["queryPlanner"]
+        return result
+
+    elif "cursor" in cursor:
+        result["cursor_id"] = cursor["cursor"]["id"]
+        result["data"] = cursor["cursor"].get("firstBatch", cursor["cursor"].get("nextBatch", None))
+        result["number_returned"] = len(result["data"])
+        return result
+    else:
+        raise OperationFailure("Unexpected DB response: %s" % cursor)
+
+
+def _unpack_response(response, cursor_id=None, codec_options=CodecOptions(),
+                     unpack_cursor_result=False):
     """Unpack a response from the database.
 
     Check the response for errors and unpack, returning a dictionary
@@ -130,6 +156,10 @@ def _unpack_response(response, cursor_id=None, codec_options=CodecOptions()):
     result["starting_from"] = struct.unpack("<i", response[12:16])[0]
     result["number_returned"] = struct.unpack("<i", response[16:20])[0]
     result["data"] = bson.decode_all(response[20:], codec_options)
+
+    if unpack_cursor_result:
+        return _unpack_cursor_result(result, response, codec_options)
+
     assert len(result["data"]) == result["number_returned"]
     return result
 
@@ -194,7 +224,7 @@ def _check_command_response(response, msg=None, allowable_errors=None):
 
 def _check_gle_response(response):
     """Return getlasterror response as a dict, or raise OperationFailure."""
-    response = _unpack_response(response)
+    response = _unpack_response(response) #TODO: check wire version?
 
     assert response["number_returned"] == 1
     result = response["data"][0]
@@ -232,17 +262,20 @@ def _check_gle_response(response):
     raise OperationFailure(details["err"], code, result)
 
 
-def _first_batch(sock_info, namespace, query,
+def _first_batch(sock_info, db, coll, query,
                  ntoreturn, slave_ok, codec_options, read_preference):
     """Simple query helper for retrieving a first (and possibly only) batch."""
     query = _Query(
-        0, namespace, 0, ntoreturn, query, None,
+        0, db, coll, 0, ntoreturn, query, None,
         codec_options, read_preference, 0, ntoreturn)
+
+    use_find_command = sock_info.max_wire_version >= 4 and "$explain" not in query #TODO: $explain
     request_id, msg, max_doc_size = query.get_message(slave_ok,
-                                                      sock_info.is_mongos)
+                                                      sock_info.is_mongos,
+                                                      use_find_command)
     sock_info.send_message(msg, max_doc_size)
     response = sock_info.receive_message(1, request_id)
-    return _unpack_response(response, None, codec_options)
+    return _unpack_response(response, None, codec_options, use_find_command)
 
 
 def _check_write_command_response(results):
