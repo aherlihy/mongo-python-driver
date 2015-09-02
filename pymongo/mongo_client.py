@@ -904,7 +904,7 @@ class MongoClient(common.BaseObject):
             raise TypeError("cursor_ids must be a list")
 
         # "Atomic", needs no lock.
-        self.__kill_cursors_queue.append((address, cursor_ids)) #add ns option to tuple
+        self.__kill_cursors_queue.append((address, cursor_ids))
 
     # This method is run periodically by a background thread.
     def _process_kill_cursors_queue(self):
@@ -965,6 +965,7 @@ class MongoClient(common.BaseObject):
                     else:
                         if use_cmd:
                             warnings.warn("Address must be in instance of CursorAddress with namespace defined for server > 3.2")
+                        # TODO: waiting on server support for OP_KILLCURSORS for 3.2
                         server.send_message(data, self.__all_credentials)
 
                     if publish:

@@ -252,7 +252,7 @@ class SocketInfo(object):
           - `msg`: bytes, the command message.
         """
         self.send_message(msg, 0)
-        response = helpers._unpack_response(self.receive_message(1, request_id)) # not a find cmd
+        response = helpers._unpack_response(self.receive_message(1, request_id))
         assert response['number_returned'] == 1
         result = response['data'][0]
 

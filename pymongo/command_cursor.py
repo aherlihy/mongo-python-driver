@@ -21,14 +21,14 @@ from collections import deque
 from bson.py3compat import integer_types
 from pymongo import helpers, monitoring
 from pymongo.errors import AutoReconnect, NotMasterError, OperationFailure
-from pymongo.message import CursorAddress, _GetMore, _Query
+from pymongo.message import CursorAddress, _GetMore
 
 
 class CommandCursor(object):
     """A cursor / iterator over command cursors.
     """
 
-    def __init__(self, collection, cursor_info, address, retrieved=0, slave_ok=None): #TODO: add query_flags argument docs
+    def __init__(self, collection, cursor_info, address, retrieved=0, slave_ok=None):
         """Create a new command cursor.
         """
         self.__collection = collection
@@ -38,7 +38,7 @@ class CommandCursor(object):
         self.__retrieved = retrieved
         self.__batch_size = 0
         self.__killed = (self.__id == 0)
-        self.__query_flags = 4 if slave_ok else 0 #TODO: warn if not given
+        self.__query_flags = 4 if slave_ok else 0 #TODO: warn if not given? Can we assume anything about slave_ok for a cmd cursor?
 
         if "ns" in cursor_info:
             self.__ns = cursor_info["ns"]
@@ -106,15 +106,13 @@ class CommandCursor(object):
         publish = monitoring.enabled()
         cmd_duration = response.duration
         rqst_id = response.request_id
-
         if publish:
             start = datetime.datetime.now()
         try:
-            unpack_cursor_response = response.max_wire_version >= 4
             doc = helpers._unpack_response(response.data,
                                            self.__id,
                                            self.__collection.codec_options,
-                                           unpack_cursor_response)
+                                           False) # TODO: set to true when getMore works with agg cursor
         except OperationFailure as exc:
             self.__killed = True
 
@@ -172,7 +170,7 @@ class CommandCursor(object):
                          self.__batch_size,
                          self.__id,
                          self.__collection.codec_options,
-                         0)) #TODO: maxTimeoutMS passed to initial query?
+                         cmd_cursor=True)) #TODO: maxTimeoutMS passed to aggregate ever?
 
         else:  # Cursor id is zero nothing else to return
             self.__killed = True

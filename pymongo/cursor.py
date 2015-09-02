@@ -828,7 +828,7 @@ class Cursor(object):
                 cmd_duration = response.duration
                 rqst_id = response.request_id
                 is_explain = isinstance(operation, _Query) and "$explain" in operation.spec
-                if response.max_wire_version >= 4 and not self.__exhaust and not is_explain: #TODO: $explain
+                if response.max_wire_version >= 4 and not self.__exhaust and not is_explain:
                     unpack_cursor_result = True
             except AutoReconnect:
                 # Don't try to send kill cursors on another socket

@@ -57,6 +57,7 @@ _OP_MAP = {
     _UPDATE: b'\x04updates\x00\x00\x00\x00\x00',
     _DELETE: b'\x04deletes\x00\x00\x00\x00\x00',
 }
+
 _UJOIN = u("%s.%s")
 
 def _randint():
@@ -249,10 +250,6 @@ class _Query(object):
             spec = _maybe_add_read_preference(spec,
                                               self.read_preference)
 
-        print("\nFIND PASSING (flags=%s, collection_name=%s, num_to_skip=%s,"
-              " num_to_return=%s, query=%s, field_selector=%s, opts=%s)\n" %
-              (flags, ns, self.ntoskip, ntoreturn, spec, self.fields,
-               self.codec_options))
         return query(flags, ns, self.ntoskip, ntoreturn,
                      spec, self.fields, self.codec_options)
 
@@ -260,12 +257,12 @@ class _Query(object):
 class _GetMore(object):
     """A getmore operation."""
 
-    __slots__ = ('db', 'coll', 'ntoreturn', 'cursor_id', 'max_time_ms', 'flags', 'codec_options')
+    __slots__ = ('db', 'coll', 'ntoreturn', 'cursor_id', 'max_time_ms', 'flags', 'codec_options', 'cmd_cursor')
 
     name = 'getMore'
 
     def __init__(self, flags, db, coll, ntoreturn, cursor_id, codec_options,
-                 max_time_ms=None):
+                 max_time_ms=None, cmd_cursor=False):
         self.db = db
         self.coll = coll
         self.ntoreturn = ntoreturn
@@ -273,6 +270,9 @@ class _GetMore(object):
         self.flags = flags
         self.codec_options = codec_options
         self.max_time_ms = max_time_ms
+        # Temporarily keep track of if this getMore is for a command cursor so
+        # we can use OP_KILLCURSORS until find support for mongos is completed.
+        self.cmd_cursor = cmd_cursor
 
     def as_command(self):
         """Return a getMore command document for this query."""
@@ -289,13 +289,10 @@ class _GetMore(object):
 
         ns = _UJOIN % (self.db, self.coll)
 
-        if use_cmd:
+        if use_cmd and not self.cmd_cursor:
             ns = _UJOIN % (self.db, "$cmd")
             spec = self.as_command()[0]
 
-            print("\nGETMORE PASSING (flags=%s, ns=%s, num_to_skip=%s,"
-                  " num_to_return=%s, query=%s, field_selector=%s, opts=%s)\n" %
-                  (flags, ns, 0, 1, spec, {}, self.codec_options))
             return query(flags, ns, 0, 1, spec, {}, self.codec_options)
 
         return get_more(ns, self.ntoreturn, self.cursor_id)
@@ -472,10 +469,6 @@ def kill_cursors(cursor_ids, namespace, codec_options, use_cmd):
         spec = SON([('killCursors', coll),
                     ('cursors', cursor_ids)])
 
-        # print("\nMSG PASSING (flags=%s, ns=%s, num_to_skip=%s,"
-        #       " num_to_return=%s, query=%s, field_selector=%s, opts=%s)\n" %
-        #       (4, ns, 0, 1, spec, {}, codec_options))
-        # Set query_flags to always be slave_ok=True
         return query(4, ns, 0, 1, spec, {}, codec_options)
     data = _ZERO_32
     data += struct.pack("<i", len(cursor_ids))

@@ -101,6 +101,7 @@ class Server(object):
             It is returned along with its Pool in the Response.
         """
         with self.get_socket(all_credentials, exhaust) as sock_info:
+
             duration = None
             publish = monitoring.enabled()
             if publish:

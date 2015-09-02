@@ -585,7 +585,6 @@ class Database(common.BaseObject):
           - `include_all` (optional): if ``True`` also list currently
             idle operations in the result
         """
-        # TODO: check that only can be run on admin DB?
         use_cmd = self.__client._server_property("max_wire_version") >= 4
         if use_cmd:
             return self.command(SON([("currentOp", 1), ("$all", include_all)]), read_preference=ReadPreference.PRIMARY)

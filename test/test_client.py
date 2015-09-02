@@ -749,7 +749,7 @@ class TestClient(IntegrationTest):
         self.collection = self.client.pymongo_test.test
         self.collection.drop()
 
-        self.collection.insert_many([{'_id': i} for i in range(200)])
+        self.collection.insert_many([{'_id': i} for i in range(20)])
         cursor = self.collection.find().batch_size(1)
         next(cursor)
         self.client.kill_cursors(

@@ -224,7 +224,7 @@ def _check_command_response(response, msg=None, allowable_errors=None):
 
 def _check_gle_response(response):
     """Return getlasterror response as a dict, or raise OperationFailure."""
-    response = _unpack_response(response) #TODO: check wire version?
+    response = _unpack_response(response)
 
     assert response["number_returned"] == 1
     result = response["data"][0]
@@ -269,7 +269,7 @@ def _first_batch(sock_info, db, coll, query,
         0, db, coll, 0, ntoreturn, query, None,
         codec_options, read_preference, 0, ntoreturn)
 
-    use_find_command = sock_info.max_wire_version >= 4 and "$explain" not in query #TODO: $explain
+    use_find_command = sock_info.max_wire_version >= 4 and "$explain" not in query
     request_id, msg, max_doc_size = query.get_message(slave_ok,
                                                       sock_info.is_mongos,
                                                       use_find_command)
