@@ -941,8 +941,12 @@ class MongoClient(common.BaseObject):
 
                     use_cmd = server.description.max_wire_version >= 4
 
-                    data = message.kill_cursors(cursor_ids, address.namespace, self.__options.codec_options, use_cmd)
-                    #TODO: change to send_message_with_response? Need to check return?
+                    try:
+                        namespace = address.namespace
+                    except AttributeError:
+                        namespace = None
+
+                    data = message.kill_cursors(cursor_ids, namespace, self.__options.codec_options, use_cmd)
 
                     if publish:
                         duration = datetime.datetime.now() - start
@@ -955,11 +959,12 @@ class MongoClient(common.BaseObject):
                         monitoring.publish_command_start(
                             command, dbname, data[0], address)
                         start = datetime.datetime.now()
-                    if use_cmd and not isinstance(address, CursorAddress):
-                        warnings.warn("Address must be in instance of CursorAddress for server > 3.2")
-                    elif use_cmd:
+                    if use_cmd and namespace is not None:
+                        # Only use killCursors command if namespace is provided.
                         server.send_message_read_result(data, self.__all_credentials)
                     else:
+                        if use_cmd:
+                            warnings.warn("Address must be in instance of CursorAddress with namespace defined for server > 3.2")
                         server.send_message(data, self.__all_credentials)
 
                     if publish:

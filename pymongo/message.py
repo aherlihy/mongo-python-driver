@@ -304,7 +304,7 @@ class _GetMore(object):
 class CursorAddress(tuple):
     """The server address (host, port) of a cursor, with namespace property."""
 
-    def __new__(cls, address, namespace):
+    def __new__(cls, address, namespace=None):
         self = tuple.__new__(cls, address)
         self.__namespace = namespace
         return self
@@ -465,7 +465,7 @@ def delete(collection_name, spec, safe,
 def kill_cursors(cursor_ids, namespace, codec_options, use_cmd):
     """Get a **killCursors** message.
     """
-    if use_cmd:
+    if use_cmd and namespace is not None:
         db, coll = namespace.split('.', 1)
         ns = _UJOIN % (db, "$cmd")
 
