@@ -827,8 +827,10 @@ class Cursor(object):
                 data = response.data
                 cmd_duration = response.duration
                 rqst_id = response.request_id
-                is_explain = isinstance(operation, _Query) and "$explain" in operation.spec
-                if response.max_wire_version >= 4 and not self.__exhaust and not is_explain:
+                is_explain = (isinstance(operation, _Query)
+                              and "$explain" in operation.spec)
+                if (response.max_wire_version >= 4 and not self.__exhaust
+                        and not is_explain):
                     unpack_cursor_result = True
             except AutoReconnect:
                 # Don't try to send kill cursors on another socket
@@ -863,10 +865,10 @@ class Cursor(object):
         if publish:
             start = datetime.datetime.now()
         try:
-            doc = helpers._unpack_response(response=data,
-                                           cursor_id=self.__id,
-                                           codec_options=self.__codec_options,
-                                           unpack_cursor_result=unpack_cursor_result)
+            doc = helpers._unpack_response(
+                response=data, cursor_id=self.__id,
+                codec_options=self.__codec_options,
+                unpack_cursor_result=unpack_cursor_result)
         except OperationFailure as exc:
             self.__killed = True
 

@@ -193,9 +193,9 @@ def _gen_get_more_command(cursor_id, coll, batch_size, max_time_ms):
 class _Query(object):
     """A query operation."""
 
-    __slots__ = ('flags', 'db', 'coll', 'ntoskip', 'ntoreturn', 'spec', 'fields',
-                 'codec_options', 'read_preference', 'limit', 'batch_size',
-                 'name')
+    __slots__ = ('flags', 'db', 'coll', 'ntoskip', 'ntoreturn', 'spec',
+                 'fields', 'codec_options', 'read_preference', 'limit',
+                 'batch_size', 'name')
 
     def __init__(self, flags, db, coll, ntoskip, ntoreturn, spec, fields,
                  codec_options, read_preference, limit, batch_size):
@@ -222,8 +222,9 @@ class _Query(object):
             return _gen_explain_command(
                 self.coll, self.spec, self.fields, self.ntoskip,
                 self.limit, self.batch_size, self.flags), self.db
-        return _gen_find_command(self.coll, self.spec, self.fields, self.ntoskip,
-                                 self.limit, self.batch_size, self.flags), self.db
+        return _gen_find_command(
+            self.coll, self.spec, self.fields, self.ntoskip, self.limit,
+            self.batch_size, self.flags), self.db
 
     def get_message(self, set_slave_ok, is_mongos, use_cmd):
         """Get a query message, possibly setting the slaveOk bit."""
@@ -237,7 +238,7 @@ class _Query(object):
         spec = self.spec
         ntoreturn = self.ntoreturn
 
-        if use_cmd and "$explain" not in spec: #TODO:$explain
+        if use_cmd and "$explain" not in spec:  # TODO: $explain
             ns = _UJOIN % (self.db, "$cmd")
             spec = self.as_command()[0]
             # Special case for negative limit.
@@ -257,7 +258,8 @@ class _Query(object):
 class _GetMore(object):
     """A getmore operation."""
 
-    __slots__ = ('db', 'coll', 'ntoreturn', 'cursor_id', 'max_time_ms', 'flags', 'codec_options', 'cmd_cursor')
+    __slots__ = ('db', 'coll', 'ntoreturn', 'cursor_id', 'max_time_ms',
+                 'flags', 'codec_options', 'cmd_cursor')
 
     name = 'getMore'
 
@@ -276,8 +278,8 @@ class _GetMore(object):
 
     def as_command(self):
         """Return a getMore command document for this query."""
-        return _gen_get_more_command(
-            self.cursor_id, self.coll, self.ntoreturn, self.max_time_ms), self.db
+        return _gen_get_more_command(self.cursor_id, self.coll,
+                                     self.ntoreturn, self.max_time_ms), self.db
 
     def get_message(self, set_slave_ok, is_mongos, use_cmd):
         """Get a getmore message."""
@@ -312,12 +314,12 @@ class CursorAddress(tuple):
         return self.__namespace
 
     def __hash__(self):
-        # Two _CursorAddress instances with different namespaces
+        # Two CursorAddress instances with different namespaces
         # must not hash the same.
         return (self + (self.__namespace,)).__hash__()
 
     def __eq__(self, other):
-        if isinstance(other, _CursorAddress):
+        if isinstance(other, CursorAddress):
             return (tuple(self) == tuple(other)
                     and self.namespace == other.namespace)
         return NotImplemented

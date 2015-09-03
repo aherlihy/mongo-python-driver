@@ -84,14 +84,15 @@ def _index_document(index_list):
     return index
 
 
-def _unpack_cursor_result(result, response, codec_options):
+def _unpack_cursor_result(result):
     # DB commands always return 1 result
 
     cursor = result["data"][0]
 
     if not cursor["ok"]:
         if "Cursor not found" in cursor.get("errmsg"):
-            raise CursorNotFound(cursor.get("errmsg"), cursor.get("code"), cursor)
+            raise CursorNotFound(cursor.get("errmsg"), cursor.get("code"),
+                                 cursor)
         raise OperationFailure(
             cursor.get("errmsg"), cursor.get("code"), cursor)
 
@@ -102,7 +103,8 @@ def _unpack_cursor_result(result, response, codec_options):
 
     elif "cursor" in cursor:
         result["cursor_id"] = cursor["cursor"]["id"]
-        result["data"] = cursor["cursor"].get("firstBatch", cursor["cursor"].get("nextBatch", None))
+        result["data"] = cursor["cursor"].get(
+            "firstBatch", cursor["cursor"].get("nextBatch", None))
         result["number_returned"] = len(result["data"])
         return result
     else:
@@ -151,14 +153,13 @@ def _unpack_response(response, cursor_id=None, codec_options=CodecOptions(),
                                error_object.get("code"),
                                error_object)
 
-    result = {}
-    result["cursor_id"] = struct.unpack("<q", response[4:12])[0]
-    result["starting_from"] = struct.unpack("<i", response[12:16])[0]
-    result["number_returned"] = struct.unpack("<i", response[16:20])[0]
-    result["data"] = bson.decode_all(response[20:], codec_options)
+    result = {"cursor_id": struct.unpack("<q", response[4:12])[0],
+              "starting_from": struct.unpack("<i", response[12:16])[0],
+              "number_returned": struct.unpack("<i", response[16:20])[0],
+              "data": bson.decode_all(response[20:], codec_options)}
 
     if unpack_cursor_result:
-        return _unpack_cursor_result(result, response, codec_options)
+        return _unpack_cursor_result(result)
 
     assert len(result["data"]) == result["number_returned"]
     return result
@@ -269,7 +270,8 @@ def _first_batch(sock_info, db, coll, query,
         0, db, coll, 0, ntoreturn, query, None,
         codec_options, read_preference, 0, ntoreturn)
 
-    use_find_command = sock_info.max_wire_version >= 4 and "$explain" not in query
+    use_find_command = (sock_info.max_wire_version >= 4
+                        and "$explain" not in query)
     request_id, msg, max_doc_size = query.get_message(slave_ok,
                                                       sock_info.is_mongos,
                                                       use_find_command)

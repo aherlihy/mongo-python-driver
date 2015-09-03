@@ -43,7 +43,6 @@ from bson.py3compat import (integer_types,
 from bson.son import SON
 from pymongo import (common,
                      database,
-                     helpers,
                      message,
                      monitoring,
                      periodic_executor,
@@ -58,7 +57,6 @@ from pymongo.errors import (AutoReconnect,
                             NetworkTimeout,
                             NotMasterError,
                             OperationFailure)
-from pymongo.message import CursorAddress
 from pymongo.read_preferences import ReadPreference
 from pymongo.server_selectors import (writable_preferred_server_selector,
                                       writable_server_selector)
@@ -876,7 +874,7 @@ class MongoClient(common.BaseObject):
 
         self.__cursor_manager.close(cursor_id, address)
 
-    def kill_cursors(self, cursor_ids, address=None, namespace=None):
+    def kill_cursors(self, cursor_ids, address=None):
         """Send a kill cursors message soon with the given ids.
 
         Raises :class:`TypeError` if `cursor_ids` is not an instance of
@@ -892,8 +890,6 @@ class MongoClient(common.BaseObject):
           - `address` (optional): (host, port) pair of the cursor's server.
             If it is not provided, the client attempts to close the cursor on
             the primary or standalone, or a mongos server.
-          - `namespace`: the namespace that the cursors were created in. Should
-            be a string with the format <db name>.<collection name>.
 
         .. versionchanged:: 3.0
            Now accepts an `address` argument. Schedules the cursors to be
@@ -927,7 +923,7 @@ class MongoClient(common.BaseObject):
             for address, cursor_ids in address_to_cursor_ids.items():
                 try:
                     if address:
-                        # address could be a tuple or _CursorAddress, but
+                        # address could be a tuple or CursorAddress, but
                         # select_server_by_address needs (host, port).
                         server = topology.select_server_by_address(
                             tuple(address))
@@ -946,7 +942,9 @@ class MongoClient(common.BaseObject):
                     except AttributeError:
                         namespace = None
 
-                    data = message.kill_cursors(cursor_ids, namespace, self.__options.codec_options, use_cmd)
+                    data = message.kill_cursors(cursor_ids, namespace,
+                                                self.__options.codec_options,
+                                                use_cmd)
 
                     if publish:
                         duration = datetime.datetime.now() - start
@@ -961,10 +959,13 @@ class MongoClient(common.BaseObject):
                         start = datetime.datetime.now()
                     if use_cmd and namespace is not None:
                         # Only use killCursors command if namespace is provided.
-                        server.send_message_read_result(data, self.__all_credentials)
+                        server.send_message_read_result(data,
+                                                        self.__all_credentials)
                     else:
                         if use_cmd:
-                            warnings.warn("Address must be in instance of CursorAddress with namespace defined for server > 3.2")
+                            warnings.warn("Address must be in instance of"
+                                          " CursorAddress with namespace "
+                                          "defined for server > 3.2")
                         # TODO: waiting on server support for OP_KILLCURSORS for 3.2
                         server.send_message(data, self.__all_credentials)
 
@@ -1102,7 +1103,7 @@ class MongoClient(common.BaseObject):
         """
         use_cmd = self._server_property("max_wire_version", 0) >= 4
         if use_cmd:
-            try: # TODO: send directly to server or use cmd helper, then ignore error?
+            try:  # TODO: send directly to server or use cmd helper?
                 self.admin.command(SON([("fsyncUnlock", 1)]))
             except OperationFailure as exc:
                 if "not locked" not in str(exc):

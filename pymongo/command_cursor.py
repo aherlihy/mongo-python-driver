@@ -28,7 +28,8 @@ class CommandCursor(object):
     """A cursor / iterator over command cursors.
     """
 
-    def __init__(self, collection, cursor_info, address, retrieved=0, slave_ok=None):
+    def __init__(self, collection, cursor_info, address, retrieved=0,
+                 slave_ok=None):
         """Create a new command cursor.
         """
         self.__collection = collection
@@ -38,7 +39,7 @@ class CommandCursor(object):
         self.__retrieved = retrieved
         self.__batch_size = 0
         self.__killed = (self.__id == 0)
-        self.__query_flags = 4 if slave_ok else 0 #TODO: warn if not given? Can we assume anything about slave_ok for a cmd cursor?
+        self.__query_flags = 4 if slave_ok else 0  # TODO: warn if not given? Can we assume anything about slave_ok for a cmd cursor?
 
         if "ns" in cursor_info:
             self.__ns = cursor_info["ns"]
@@ -112,7 +113,7 @@ class CommandCursor(object):
             doc = helpers._unpack_response(response.data,
                                            self.__id,
                                            self.__collection.codec_options,
-                                           False) # TODO: set to true when getMore works with agg cursor
+                                           False)  # TODO: set to true when getMore works with agg cursor
         except OperationFailure as exc:
             self.__killed = True
 
@@ -170,7 +171,7 @@ class CommandCursor(object):
                          self.__batch_size,
                          self.__id,
                          self.__collection.codec_options,
-                         cmd_cursor=True)) #TODO: maxTimeoutMS passed to aggregate ever?
+                         cmd_cursor=True))  # TODO: maxTimeoutMS passed to aggregate ever?
 
         else:  # Cursor id is zero nothing else to return
             self.__killed = True

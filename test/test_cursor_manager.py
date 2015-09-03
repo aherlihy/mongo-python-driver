@@ -75,7 +75,9 @@ class TestCursorManager(IntegrationTest):
             # is sent after the killCursors message.
             cursor = client.pymongo_test.test.find().batch_size(1)
             next(cursor)
-            client.close_cursor(cursor.cursor_id, CursorAddress(self.client.address, self.collection.full_name))
+            client.close_cursor(
+                cursor.cursor_id,
+                CursorAddress(self.client.address, self.collection.full_name))
 
             def raises_cursor_not_found():
                 try:

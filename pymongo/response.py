@@ -16,7 +16,8 @@
 
 
 class Response(object):
-    __slots__ = ('_data', '_address', '_request_id', '_duration', '_max_wire_version')
+    __slots__ = ('_data', '_address', '_request_id', '_duration',
+                 '_max_wire_version')
 
     def __init__(self, data, address, request_id, duration, max_wire_version):
         """Represent a response from the server.

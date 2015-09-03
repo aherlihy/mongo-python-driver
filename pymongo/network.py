@@ -66,6 +66,7 @@ def command(sock, dbname, spec, slave_ok, is_mongos,
     publish = user and monitoring.enabled()
     if publish:
         start = datetime.datetime.now()
+
     request_id, msg, _ = message.query(flags, ns, 0, -1, spec,
                                        None, codec_options, check_keys)
 

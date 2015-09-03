@@ -741,7 +741,7 @@ class TestClient(IntegrationTest):
 
     def test_kill_cursors_with_cursoraddress_no_ns(self):
         if (client_context.is_mongos
-            and not client_context.version.at_least(2, 4, 7)):
+                and not client_context.version.at_least(2, 4, 7)):
             # Old mongos sends incorrectly formatted error response when
             # cursor isn't found, see SERVER-9738.
             raise SkipTest("Can't test kill_cursors against old mongos")
@@ -772,7 +772,7 @@ class TestClient(IntegrationTest):
 
     def test_kill_cursors_with_tuple(self):
         if (client_context.is_mongos
-            and not client_context.version.at_least(2, 4, 7)):
+                and not client_context.version.at_least(2, 4, 7)):
             # Old mongos sends incorrectly formatted error response when
             # cursor isn't found, see SERVER-9738.
             raise SkipTest("Can't test kill_cursors against old mongos")
@@ -902,7 +902,8 @@ class TestClient(IntegrationTest):
                                  serverSelectionTimeoutMS=100,
                                  replicaSet=client_context.replica_set_name)
             client._send_message_with_response(
-                operation=message._GetMore(0, 'pymongo_test', 'collection', 101, 1234, client.codec_options),
+                operation=message._GetMore(0, 'pymongo_test', 'collection',
+                                           101, 1234, client.codec_options),
                 address=('not-a-member', 27017))
 
 
