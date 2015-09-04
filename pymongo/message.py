@@ -226,7 +226,7 @@ class _Query(object):
             self.coll, self.spec, self.fields, self.ntoskip, self.limit,
             self.batch_size, self.flags), self.db
 
-    def get_message(self, set_slave_ok, is_mongos, use_cmd):
+    def get_message(self, set_slave_ok, is_mongos, use_cmd=False):
         """Get a query message, possibly setting the slaveOk bit."""
         if set_slave_ok:
             # Set the slaveOk bit.
@@ -241,15 +241,13 @@ class _Query(object):
         if use_cmd and "$explain" not in spec:  # TODO: $explain
             ns = _UJOIN % (self.db, "$cmd")
             spec = self.as_command()[0]
-            # Special case for negative limit.
-            if spec.get("limit", 0) < 0:
-                spec["singleBatch"] = True
-                spec["limit"] = 0 - spec["limit"]
             ntoreturn = 1  # All DB commands return 1 document
 
         if is_mongos:
             spec = _maybe_add_read_preference(spec,
                                               self.read_preference)
+
+        print "RUNNING QUERY(%s, %s, %s, %s, %s)" % (flags, ns, self.ntoskip, spec, self.fields)
 
         return query(flags, ns, self.ntoskip, ntoreturn,
                      spec, self.fields, self.codec_options)
@@ -461,17 +459,9 @@ def delete(collection_name, spec, safe,
         return (request_id, remove_message, len(encoded))
 
 
-def kill_cursors(cursor_ids, namespace, codec_options, use_cmd):
+def kill_cursors(cursor_ids):
     """Get a **killCursors** message.
     """
-    if use_cmd and namespace is not None:
-        db, coll = namespace.split('.', 1)
-        ns = _UJOIN % (db, "$cmd")
-
-        spec = SON([('killCursors', coll),
-                    ('cursors', cursor_ids)])
-
-        return query(4, ns, 0, 1, spec, {}, codec_options)
     data = _ZERO_32
     data += struct.pack("<i", len(cursor_ids))
     for cursor_id in cursor_ids:

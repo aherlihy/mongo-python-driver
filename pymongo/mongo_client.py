@@ -33,6 +33,7 @@ access:
 
 import contextlib
 import datetime
+import sys
 import threading
 import warnings
 import weakref
@@ -338,6 +339,7 @@ class MongoClient(common.BaseObject):
         self.__lock = threading.Lock()
         self.__cursor_manager = CursorManager(self)
         self.__kill_cursors_queue = []
+        self.__warned_kill_cursors = False
 
         # Cache of existing indexes used by ensure_index ops.
         self.__index_cache = {}
@@ -859,9 +861,7 @@ class MongoClient(common.BaseObject):
           - `cursor_id`: id of cursor to close
           - `address` (optional): (host, port) pair of the cursor's server.
             If it is not provided, the client attempts to close the cursor on
-            the primary or standalone, or a mongos server. If using
-            server >= 3.2 address cannot be None and must be an instance of
-            `CursorAddress`.
+            the primary or standalone, or a mongos server.
 
         .. versionchanged:: 3.2
            If using server >= 3.2, address cannot be None and MUST be a
@@ -935,46 +935,44 @@ class MongoClient(common.BaseObject):
                     if publish:
                         start = datetime.datetime.now()
 
-                    use_cmd = server.description.max_wire_version >= 4
-
                     try:
                         namespace = address.namespace
+                        db, coll = namespace.split('.', 1)
                     except AttributeError:
                         namespace = None
+                        db = coll = "OP_KILL_CURSORS"
 
-                    data = message.kill_cursors(cursor_ids, namespace,
-                                                self.__options.codec_options,
-                                                use_cmd)
+                    spec = SON([('killCursors', coll),
+                                ('cursors', cursor_ids)])
+                    with server.get_socket(self.__all_credentials) as sock_info:
+                        # Warn the user if namespace is not provided.
+                        if (sock_info.max_wire_version >= 4 and
+                                    namespace is None and not
+                                    self.__warned_kill_cursors):
+                            sys.stderr.write("Warning: for server >= 3.2 must "
+                                             "supply a namespace when calling "
+                                             "kill_cursors. Defaulting to "
+                                             "legacy OP_KILLCURSORS\n")
+                            self.__warned_kill_cursors = True
 
-                    if publish:
-                        duration = datetime.datetime.now() - start
-                        try:
-                            dbname, collname = address.namespace.split(".", 1)
-                        except AttributeError:
-                            dbname = collname = 'OP_KILL_CURSORS'
-                        command = SON([('killCursors', collname),
-                                       ('cursors', cursor_ids)])
-                        monitoring.publish_command_start(
-                            command, dbname, data[0], address)
-                        start = datetime.datetime.now()
-                    if use_cmd and namespace is not None:
-                        # Only use killCursors command if namespace is provided.
-                        server.send_message_read_result(data,
-                                                        self.__all_credentials)
-                    else:
-                        if use_cmd:
-                            warnings.warn("Address must be in instance of"
-                                          " CursorAddress with namespace "
-                                          "defined for server > 3.2")
-                        # TODO: waiting on server support for OP_KILLCURSORS for 3.2
-                        server.send_message(data, self.__all_credentials)
+                        if sock_info.max_wire_version >= 4 and namespace is not None:
+                            sock_info.command(db, spec)
+                        else:
+                            request_id, msg = message.kill_cursors(cursor_ids)
+                            if publish:
+                                duration = datetime.datetime.now() - start
+                                monitoring.publish_command_start(
+                                    spec, db, request_id, address)
+                                start = datetime.datetime.now()
 
-                    if publish:
-                        duration = (datetime.datetime.now() - start) + duration
-                        # OP_KILL_CURSORS returns no reply, fake one.
-                        reply = {'cursorsUnknown': cursor_ids, 'ok': 1}
-                        monitoring.publish_command_success(
-                            duration, reply, 'killCursors', data[0], address)
+                            sock_info.send_message(msg, 0)
+
+                            if publish:
+                                duration = (datetime.datetime.now() - start) + duration
+                                # OP_KILL_CURSORS returns no reply, fake one.
+                                reply = {'cursorsUnknown': cursor_ids, 'ok': 1}
+                                monitoring.publish_command_success(
+                                    duration, reply, 'killCursors', request_id, address)
 
                 except ConnectionFailure as exc:
                     warnings.warn("couldn't close cursor on %s: %s"
@@ -1101,17 +1099,18 @@ class MongoClient(common.BaseObject):
     def unlock(self):
         """Unlock a previously locked server.
         """
-        use_cmd = self._server_property("max_wire_version", 0) >= 4
-        if use_cmd:
-            try:  # TODO: send directly to server or use cmd helper?
-                self.admin.command(SON([("fsyncUnlock", 1)]))
-            except OperationFailure as exc:
-                if "not locked" not in str(exc):
+        with self._socket_for_writes() as sock_info:
+            if sock_info.max_wire_version >=4:
+                try:
+                    sock_info.command("admin", {"fsyncUnlock": 1},
+                                      read_preference=ReadPreference.PRIMARY)
+                except OperationFailure as exc:
+                    print "RAISED ERROR CODE %s" % exc.code
                     raise
-        else:
-            coll = self.admin.get_collection(
-                "$cmd.sys.unlock", read_preference=ReadPreference.PRIMARY)
-            coll.find_one()
+            else:
+                helpers._first_batch(sock_info, "admin", "$cmd.sys.unlock",
+                    {}, 1, True, self.codec_options, ReadPreference.PRIMARY)
+
 
     def __enter__(self):
         return self

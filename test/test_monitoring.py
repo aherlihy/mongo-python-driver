@@ -124,6 +124,8 @@ class TestCommandMonitoring(IntegrationTest):
             isinstance(succeeded, monitoring.CommandSucceededEvent))
         self.assertTrue(
             isinstance(started, monitoring.CommandStartedEvent))
+        # Will have either positive or negative limit depending on server version.
+        started.command['limit'] = abs(started.command['limit'])
         self.assertEqual(
             SON([('find', 'test'),
                  ('filter', {}),
@@ -167,12 +169,20 @@ class TestCommandMonitoring(IntegrationTest):
         self.assertEqual('find', succeeded.command_name)
         self.assertTrue(isinstance(succeeded.request_id, int))
         self.assertEqual(cursor.address, succeeded.connection_id)
-        expected_result = {
+        expected_result_old = {
             'cursor': {'id': cursor_id,
                        'ns': 'pymongo_test.test',
                        'firstBatch': [{} for _ in range(4)]},
             'ok': 1}
-        self.assertEqual(expected_result, succeeded.reply)
+        # Find command returns results in different format.
+        expected_result = {
+            u'cursor': {u'id': cursor_id,
+                        u'ns': u'pymongo_test.test',
+                        u'firstBatch': [{} for _ in range(4)]},
+            u'ok': 1.0,
+            u'waitedMS': 0.0}
+        self.assertTrue(succeeded.reply == expected_result
+                        or succeeded.reply == expected_result_old)
 
         self.listener.results.clear()
         # Next batch. Exhausting the cursor could cause a getMore
@@ -526,7 +536,8 @@ class TestCommandMonitoring(IntegrationTest):
             self.assertEqual(cursor.address, succeeded.connection_id)
             # There could be more than one cursor_id here depending on
             # when the thread last ran.
-            self.assertIn(cursor_id, succeeded.reply['cursorsUnknown'])
+            self.assertTrue(cursor_id in succeeded.reply['cursorsUnknown']
+                            or cursor_id in succeeded.reply['cursorsKilled'])
 
     def test_non_bulk_writes(self):
         coll = self.client.pymongo_test.test

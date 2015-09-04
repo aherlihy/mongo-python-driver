@@ -65,6 +65,7 @@ class Server(object):
         """
         _, data, max_doc_size = self._split_message(message)
         with self.get_socket(all_credentials) as sock_info:
+            print "SENDING SERVER"
             sock_info.send_message(data, max_doc_size)
 
     def send_message_read_result(self, message, all_credentials):
@@ -134,14 +135,14 @@ class Server(object):
                     pool=self._pool,
                     duration=duration,
                     request_id=request_id,
-                    max_wire_version=sock_info.max_wire_version)
+                    from_command=use_find_cmd)
             else:
                 return Response(
                     data=response_data,
                     address=self._description.address,
                     duration=duration,
                     request_id=request_id,
-                    max_wire_version=sock_info.max_wire_version)
+                    from_command=use_find_cmd)
 
     @contextlib.contextmanager
     def get_socket(self, all_credentials, checkout=False):
