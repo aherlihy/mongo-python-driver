@@ -238,7 +238,7 @@ class _Query(object):
         spec = self.spec
         ntoreturn = self.ntoreturn
 
-        if use_cmd and "$explain" not in spec:  # TODO: $explain
+        if use_cmd:
             ns = _UJOIN % (self.db, "$cmd")
             spec = self.as_command()[0]
             ntoreturn = 1  # All DB commands return 1 document

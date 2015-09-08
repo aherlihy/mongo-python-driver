@@ -918,7 +918,7 @@ class Cursor(object):
             monitoring.publish_command_success(
                 duration, res, cmd_name, rqst_id, self.__address)
 
-        if from_command:
+        if from_command and cmd_name != "explain":
             cursor = doc['data'][0]['cursor']
             self.__id = cursor['id']
             if cmd_name == 'find':
