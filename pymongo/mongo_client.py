@@ -1102,12 +1102,8 @@ class MongoClient(common.BaseObject):
         """
         with self._socket_for_writes() as sock_info:
             if sock_info.max_wire_version >=4:
-                try:
-                    sock_info.command("admin", {"fsyncUnlock": 1},
-                                      read_preference=ReadPreference.PRIMARY)
-                except OperationFailure as exc:
-                    print "RAISED ERROR CODE %s" % exc.code
-                    raise
+                sock_info.command("admin", {"fsyncUnlock": 1},
+                                  read_preference=ReadPreference.PRIMARY)
             else:
                 helpers._first_batch(sock_info, "admin", "$cmd.sys.unlock",
                     {}, 1, True, self.codec_options, ReadPreference.PRIMARY)

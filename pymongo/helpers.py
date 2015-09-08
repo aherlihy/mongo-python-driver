@@ -240,7 +240,7 @@ def _first_batch(sock_info, db, coll, query,
     """Simple query helper for retrieving a first (and possibly only) batch."""
     query = _Query(
         0, db, coll, 0, ntoreturn, query, None,
-        codec_options, read_preference, 0, ntoreturn)
+        codec_options, read_preference, 0, 1)
 
     request_id, msg, max_doc_size = query.get_message(slave_ok,
                                                       sock_info.is_mongos)

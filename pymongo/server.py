@@ -64,7 +64,6 @@ class Server(object):
         """
         _, data, max_doc_size = self._split_message(message)
         with self.get_socket(all_credentials) as sock_info:
-            print "SENDING SERVER"
             sock_info.send_message(data, max_doc_size)
 
     def send_message_with_response(

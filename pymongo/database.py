@@ -587,20 +587,15 @@ class Database(common.BaseObject):
         """
         with self.__client._socket_for_writes() as sock_info:
             if sock_info.max_wire_version >=4:
-                print "USING CMD COP"
                 return sock_info.command(
                     "admin", SON([("currentOp", 1), ("$all", include_all)]),
                     read_preference=ReadPreference.PRIMARY)
             else:
-                coll = self.get_collection("$cmd.sys.inprog", read_preference=ReadPreference.PRIMARY)
-                if include_all:
-                    return coll.find_one({"$all": True})
-                else:
-                    return coll.find_one()
-                # spec = {"$all": True} if include_all else {}
-                # return helpers._first_batch(sock_info, "admin", "$cmd.sys.inprog",
-                #     spec, 1, True, self.codec_options,
-                #     ReadPreference.PRIMARY)
+                spec = {"$all": True} if include_all else {}
+                x = helpers._first_batch(sock_info, "admin", "$cmd.sys.inprog",
+                    spec, 1, True, self.codec_options,
+                    ReadPreference.PRIMARY)
+                return x.get('data')[0]
 
     def profiling_level(self):
         """Get the database's current profiling level.
