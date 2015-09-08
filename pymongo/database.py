@@ -595,7 +595,7 @@ class Database(common.BaseObject):
                 x = helpers._first_batch(sock_info, "admin", "$cmd.sys.inprog",
                     spec, 1, True, self.codec_options,
                     ReadPreference.PRIMARY)
-                return x.get('data')[0]
+                return x.get('data', [None])[0]
 
     def profiling_level(self):
         """Get the database's current profiling level.

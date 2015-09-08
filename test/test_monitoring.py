@@ -124,7 +124,7 @@ class TestCommandMonitoring(IntegrationTest):
             isinstance(succeeded, monitoring.CommandSucceededEvent))
         self.assertTrue(
             isinstance(started, monitoring.CommandStartedEvent))
-        # Will have either positive or negative limit depending on server version.
+        # Either positive or negative limit depending on server version.
         started.command['limit'] = abs(started.command['limit'])
         self.assertEqual(
             SON([('find', 'test'),
