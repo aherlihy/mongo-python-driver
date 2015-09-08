@@ -44,6 +44,7 @@ from bson.py3compat import (integer_types,
 from bson.son import SON
 from pymongo import (common,
                      database,
+                     helpers,
                      message,
                      monitoring,
                      periodic_executor,

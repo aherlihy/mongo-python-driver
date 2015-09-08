@@ -28,8 +28,7 @@ class CommandCursor(object):
     """A cursor / iterator over command cursors.
     """
 
-    def __init__(self, collection, cursor_info, address, retrieved=0,
-                 slave_ok=None):
+    def __init__(self, collection, cursor_info, address, retrieved=0):
         """Create a new command cursor.
         """
         self.__collection = collection
@@ -39,7 +38,6 @@ class CommandCursor(object):
         self.__retrieved = retrieved
         self.__batch_size = 0
         self.__killed = (self.__id == 0)
-        self.__query_flags = 4 if slave_ok else 0  # TODO: warn if not given? Can we assume anything about slave_ok for a cmd cursor?
 
         if "ns" in cursor_info:
             self.__ns = cursor_info["ns"]
@@ -165,13 +163,13 @@ class CommandCursor(object):
 
         if self.__id:  # Get More
             self.__send_message(
-                _GetMore(self.__query_flags,
+                _GetMore(0,
                          self.__collection.database.name,
                          self.__collection.name,
                          self.__batch_size,
                          self.__id,
                          self.__collection.codec_options,
-                         cmd_cursor=True))  # TODO: maxTimeoutMS passed to aggregate ever?
+                         cmd_cursor=True))
 
         else:  # Cursor id is zero nothing else to return
             self.__killed = True

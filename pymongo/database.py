@@ -462,8 +462,7 @@ class Database(common.BaseObject):
                 cmd["filter"] = criteria
             coll = self["$cmd"]
             cursor = self._command(sock_info, cmd, slave_okay)["cursor"]
-            return CommandCursor(coll, cursor, sock_info.address,
-                                 slave_ok=slave_okay)
+            return CommandCursor(coll, cursor, sock_info.address)
         else:
             coll = self["system.namespaces"]
             res = _first_batch(sock_info, coll.database.name, coll.name,
@@ -476,8 +475,7 @@ class Database(common.BaseObject):
                 "ns": coll.full_name,
             }
             # Need to tell the cursor how many docs were in the first batch.
-            return CommandCursor(coll, cursor, sock_info.address, len(data),
-                                 slave_ok=slave_okay)
+            return CommandCursor(coll, cursor, sock_info.address, len(data))
 
     def collection_names(self, include_system_collections=True):
         """Get a list of all the collection names in this database.
@@ -589,13 +587,20 @@ class Database(common.BaseObject):
         """
         with self.__client._socket_for_writes() as sock_info:
             if sock_info.max_wire_version >=4:
+                print "USING CMD COP"
                 return sock_info.command(
                     "admin", SON([("currentOp", 1), ("$all", include_all)]),
                     read_preference=ReadPreference.PRIMARY)
             else:
-                helpers._first_batch(sock_info, "admin", "$cmd.sys.inprog",
-                    {"$all": include_all}, 1, True, self.codec_options,
-                    ReadPreference.PRIMARY)
+                coll = self.get_collection("$cmd.sys.inprog", read_preference=ReadPreference.PRIMARY)
+                if include_all:
+                    return coll.find_one({"$all": True})
+                else:
+                    return coll.find_one()
+                # spec = {"$all": True} if include_all else {}
+                # return helpers._first_batch(sock_info, "admin", "$cmd.sys.inprog",
+                #     spec, 1, True, self.codec_options,
+                #     ReadPreference.PRIMARY)
 
     def profiling_level(self):
         """Get the database's current profiling level.

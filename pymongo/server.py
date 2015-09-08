@@ -18,7 +18,6 @@ import contextlib
 
 from datetime import datetime
 
-import bson
 from pymongo import monitoring
 from pymongo.response import Response, ExhaustResponse
 from pymongo.server_type import SERVER_TYPE
@@ -67,22 +66,6 @@ class Server(object):
         with self.get_socket(all_credentials) as sock_info:
             print "SENDING SERVER"
             sock_info.send_message(data, max_doc_size)
-
-    def send_message_read_result(self, message, all_credentials):
-        """Send an unacknowledged message to MongoDB that returns a result.
-
-        Can raise ConnectionFailure.
-
-        :Parameters:
-          - `message`: (request_id, data).
-          - `all_credentials`: dict, maps auth source to MongoCredential.
-        """
-        request_id, data, max_doc_size = self._split_message(message)
-        with self.get_socket(all_credentials) as sock_info:
-            sock_info.send_message(data, max_doc_size)
-            # Since it's called async we don't want to interrupt another message.
-            sock_info.receive_message(1, request_id)
-
 
     def send_message_with_response(
             self,

@@ -247,8 +247,6 @@ class _Query(object):
             spec = _maybe_add_read_preference(spec,
                                               self.read_preference)
 
-        print "RUNNING QUERY(%s, %s, %s, %s, %s)" % (flags, ns, self.ntoskip, spec, self.fields)
-
         return query(flags, ns, self.ntoskip, ntoreturn,
                      spec, self.fields, self.codec_options)
 
