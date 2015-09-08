@@ -43,6 +43,7 @@ from bson.py3compat import (integer_types,
 from bson.son import SON
 from pymongo import (common,
                      database,
+                     helpers,
                      message,
                      monitoring,
                      periodic_executor,
@@ -1074,9 +1075,14 @@ class MongoClient(common.BaseObject):
     def unlock(self):
         """Unlock a previously locked server.
         """
-        coll = self.admin.get_collection(
-            "$cmd.sys.unlock", read_preference=ReadPreference.PRIMARY)
-        coll.find_one()
+        with self._socket_for_writes() as sock_info:
+            if sock_info.max_wire_version >=4:
+                sock_info.command("admin", {"fsyncUnlock": 1},
+                                  read_preference=ReadPreference.PRIMARY)
+            else:
+                helpers._first_batch(sock_info, "admin.$cmd.sys.unlock",
+                    {}, 1, True, self.codec_options, ReadPreference.PRIMARY)
+
 
     def __enter__(self):
         return self
