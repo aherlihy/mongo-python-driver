@@ -110,8 +110,8 @@ class CommandCursor(object):
         try:
             doc = helpers._unpack_response(response.data,
                                            self.__id,
-                                           self.__collection.codec_options,
-                                           False)  # TODO: set to true when getMore works with agg cursor
+                                           self.__collection.codec_options)
+            # TODO: check_command_response when getMore works with agg cursor
         except OperationFailure as exc:
             self.__killed = True
 
