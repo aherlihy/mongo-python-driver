@@ -110,7 +110,8 @@ class CommandCursor(object):
         try:
             doc = helpers._unpack_response(response.data,
                                            self.__id,
-                                           self.__collection.codec_options)
+                                           self.__collection.codec_options,
+                                           False)  # TODO: set to true when getMore works with agg cursor
         except OperationFailure as exc:
             self.__killed = True
 
@@ -162,7 +163,13 @@ class CommandCursor(object):
 
         if self.__id:  # Get More
             self.__send_message(
-                _GetMore(self.__ns, self.__batch_size, self.__id))
+                _GetMore(0,
+                         self.__collection.database.name,
+                         self.__collection.name,
+                         self.__batch_size,
+                         self.__id,
+                         self.__collection.codec_options,
+                         cmd_cursor=True))
 
         else:  # Cursor id is zero nothing else to return
             self.__killed = True
