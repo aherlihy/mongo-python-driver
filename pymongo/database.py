@@ -591,7 +591,7 @@ class Database(common.BaseObject):
                     "admin", SON([("currentOp", 1), ("$all", include_all)]))
             else:
                 spec = {"$all": True} if include_all else {}
-                x = helpers._first_batch(sock_info, "admin.$cmd.sys.inprog",
+                x = helpers._first_batch(sock_info, "admin", "$cmd.sys.inprog",
                     spec, -1, True, self.codec_options,
                     ReadPreference.PRIMARY)
                 return x.get('data', [None])[0]
