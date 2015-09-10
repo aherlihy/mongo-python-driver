@@ -241,7 +241,6 @@ def _first_batch(sock_info, db, coll, query,
     query = _Query(
         0, db, coll, 0, ntoreturn, query, None,
         codec_options, read_preference, 0, ntoreturn)
-
     request_id, msg, max_doc_size = query.get_message(slave_ok,
                                                       sock_info.is_mongos)
     sock_info.send_message(msg, max_doc_size)
