@@ -861,9 +861,9 @@ class Cursor(object):
         if publish:
             start = datetime.datetime.now()
         try:
-            doc = helpers._unpack_response(
-                response=data, cursor_id=self.__id,
-                codec_options=self.__codec_options)
+            doc = helpers._unpack_response(response=data,
+                                           cursor_id=self.__id,
+                                           codec_options=self.__codec_options)
             if from_command:
                 helpers._check_command_response(doc['data'][0])
         except OperationFailure as exc:
