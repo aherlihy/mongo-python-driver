@@ -1077,7 +1077,12 @@ class MongoClient(common.BaseObject):
         """
         with self._socket_for_writes() as sock_info:
             if sock_info.max_wire_version >= 4:
-                sock_info.command("admin", {"fsyncUnlock": 1})
+                try:
+                    sock_info.command("admin", {"fsyncUnlock": 1})
+                except OperationFailure as exc:
+                    # Ignore "DB not locked" to replicate old behavior
+                    if exc.code != 125:
+                        raise
             else:
                 helpers._first_batch(sock_info, "admin", "$cmd.sys.unlock",
                     {}, -1, True, self.codec_options, ReadPreference.PRIMARY)
