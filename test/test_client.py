@@ -902,7 +902,7 @@ class TestClient(IntegrationTest):
                                  serverSelectionTimeoutMS=100,
                                  replicaSet=client_context.replica_set_name)
             client._send_message_with_response(
-                operation=message._GetMore(0, 'pymongo_test', 'collection',
+                operation=message._GetMore('pymongo_test', 'collection',
                                            101, 1234, client.codec_options),
                 address=('not-a-member', 27017))
 

@@ -1048,7 +1048,6 @@ class TestCursor(IntegrationTest):
             op = self.db.system.profile.find({'ns': 'pymongo_test.test',
                                               'op': 'query',
                                               'query.comment': 'foo'})
-
             self.assertEqual(op.count(), 1)
 
         run_with_profiling(find)
