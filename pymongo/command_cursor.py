@@ -163,8 +163,7 @@ class CommandCursor(object):
 
         if self.__id:  # Get More
             self.__send_message(
-                _GetMore(0,
-                         self.__collection.database.name,
+                _GetMore(self.__collection.database.name,
                          self.__collection.name,
                          self.__batch_size,
                          self.__id,
