@@ -986,8 +986,7 @@ class Cursor(object):
             if self.__exhaust:
                 self.__send_message(None)
             else:
-                self.__send_message(_GetMore(self.__query_flags,
-                                             self.__collection.database.name,
+                self.__send_message(_GetMore(self.__collection.database.name,
                                              self.__collection.name,
                                              limit,
                                              self.__id,

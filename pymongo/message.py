@@ -241,7 +241,7 @@ class _Query(object):
         if use_cmd:
             ns = _UJOIN % (self.db, "$cmd")
             spec = self.as_command()[0]
-            ntoreturn = 1  # All DB commands return 1 document
+            ntoreturn = -1  # All DB commands return 1 document
 
         if is_mongos:
             spec = _maybe_add_read_preference(spec,
@@ -255,17 +255,16 @@ class _GetMore(object):
     """A getmore operation."""
 
     __slots__ = ('db', 'coll', 'ntoreturn', 'cursor_id', 'max_time_ms',
-                 'flags', 'codec_options', 'cmd_cursor')
+                 'codec_options', 'cmd_cursor')
 
     name = 'getMore'
 
-    def __init__(self, flags, db, coll, ntoreturn, cursor_id, codec_options,
+    def __init__(self, db, coll, ntoreturn, cursor_id, codec_options,
                  max_time_ms=None, cmd_cursor=False):
         self.db = db
         self.coll = coll
         self.ntoreturn = ntoreturn
         self.cursor_id = cursor_id
-        self.flags = flags
         self.codec_options = codec_options
         self.max_time_ms = max_time_ms
         # Temporarily keep track of if this getMore is for a command cursor so
@@ -279,11 +278,7 @@ class _GetMore(object):
 
     def get_message(self, set_slave_ok, is_mongos, use_cmd):
         """Get a getmore message."""
-        if set_slave_ok:
-            # Set the slaveOk bit.
-            flags =  self.flags | 4
-        else:
-            flags = self.flags
+        flags = 4 if set_slave_ok else 0
 
         ns = _UJOIN % (self.db, self.coll)
 
@@ -291,7 +286,7 @@ class _GetMore(object):
             ns = _UJOIN % (self.db, "$cmd")
             spec = self.as_command()[0]
 
-            return query(flags, ns, 0, 1, spec, {}, self.codec_options)
+            return query(flags, ns, 0, -1, spec, None, self.codec_options)
 
         return get_more(ns, self.ntoreturn, self.cursor_id)
 
