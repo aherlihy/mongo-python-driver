@@ -188,7 +188,7 @@ def _check_command_response(response, msg=None, allowable_errors=None):
                 raise DuplicateKeyError(errmsg, code, response)
             elif code == 50:
                 raise ExecutionTimeout(errmsg, code, response)
-            elif code==43:
+            elif code == 43:
                 raise CursorNotFound(errmsg, code, response)
 
             msg = msg or "%s"
@@ -240,7 +240,7 @@ def _first_batch(sock_info, db, coll, query,
     """Simple query helper for retrieving a first (and possibly only) batch."""
     query = _Query(
         0, db, coll, 0, ntoreturn, query, None,
-        codec_options, read_preference, 0, 1)
+        codec_options, read_preference, 0, ntoreturn)
 
     request_id, msg, max_doc_size = query.get_message(slave_ok,
                                                       sock_info.is_mongos)
