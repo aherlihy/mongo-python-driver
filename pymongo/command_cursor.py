@@ -21,7 +21,7 @@ from collections import deque
 from bson.py3compat import integer_types
 from pymongo import helpers, monitoring
 from pymongo.errors import AutoReconnect, NotMasterError, OperationFailure
-from pymongo.message import CursorAddress, _GetMore
+from pymongo.message import _CursorAddress, _GetMore
 
 
 class CommandCursor(object):
@@ -53,7 +53,7 @@ class CommandCursor(object):
         """
         if self.__id and not self.__killed:
             self.__collection.database.client.close_cursor(
-                self.__id, CursorAddress(self.__address, self.__ns))
+                self.__id, _CursorAddress(self.__address, self.__ns))
         self.__killed = True
 
     def close(self):

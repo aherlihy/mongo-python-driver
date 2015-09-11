@@ -20,7 +20,7 @@ sys.path[0:0] = [""]
 
 from pymongo.cursor_manager import CursorManager
 from pymongo.errors import CursorNotFound
-from pymongo.message import CursorAddress
+from pymongo.message import _CursorAddress
 from test import (client_context,
                   client_knobs,
                   unittest,
@@ -77,7 +77,7 @@ class TestCursorManager(IntegrationTest):
             next(cursor)
             client.close_cursor(
                 cursor.cursor_id,
-                CursorAddress(self.client.address, self.collection.full_name))
+                _CursorAddress(self.client.address, self.collection.full_name))
 
             def raises_cursor_not_found():
                 try:

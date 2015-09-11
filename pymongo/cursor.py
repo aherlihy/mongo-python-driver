@@ -32,7 +32,7 @@ from pymongo.errors import (AutoReconnect,
                             InvalidOperation,
                             NotMasterError,
                             OperationFailure)
-from pymongo.message import CursorAddress, _GetMore, _Query
+from pymongo.message import _CursorAddress, _GetMore, _Query
 from pymongo.read_preferences import ReadPreference
 
 _QUERY_OPTIONS = {
@@ -271,7 +271,7 @@ class Cursor(object):
             else:
                 self.__collection.database.client.close_cursor(
                     self.__id,
-                    CursorAddress(
+                    _CursorAddress(
                         self.__address, self.__collection.full_name))
         if self.__exhaust and self.__exhaust_mgr:
             self.__exhaust_mgr.close()

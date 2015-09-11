@@ -864,9 +864,6 @@ class MongoClient(common.BaseObject):
             If it is not provided, the client attempts to close the cursor on
             the primary or standalone, or a mongos server.
 
-        .. versionchanged:: 3.2
-           If using server >= 3.2, address cannot be None and MUST be a
-           `CursorAddress`.
         .. versionchanged:: 3.0
            Added ``address`` parameter.
         """
@@ -924,7 +921,7 @@ class MongoClient(common.BaseObject):
             for address, cursor_ids in address_to_cursor_ids.items():
                 try:
                     if address:
-                        # address could be a tuple or CursorAddress, but
+                        # address could be a tuple or _CursorAddress, but
                         # select_server_by_address needs (host, port).
                         server = topology.select_server_by_address(
                             tuple(address))
@@ -948,16 +945,17 @@ class MongoClient(common.BaseObject):
                     with server.get_socket(self.__all_credentials) as sock_info:
                         # Warn the user if namespace is not provided.
                         if (sock_info.max_wire_version >= 4 and
-                                    namespace is None and not
-                                    self.__warned_kill_cursors):
+                                namespace is None and not
+                                self.__warned_kill_cursors):
                             sys.stderr.write("Warning: for server >= 3.2 must "
                                              "supply a namespace when calling "
                                              "kill_cursors. Defaulting to "
                                              "legacy OP_KILLCURSORS\n")
                             self.__warned_kill_cursors = True
 
-                        if sock_info.max_wire_version >= 4 and namespace is not None:
-                            sock_info.command(db, spec)
+                        if (sock_info.max_wire_version >= 4 and
+                                namespace is not None):
+                            sock_info.command(db, spec, slave_ok=True)
                         else:
                             request_id, msg = message.kill_cursors(cursor_ids)
                             if publish:
@@ -969,11 +967,13 @@ class MongoClient(common.BaseObject):
                             sock_info.send_message(msg, 0)
 
                             if publish:
-                                duration = (datetime.datetime.now() - start) + duration
+                                duration = ((datetime.datetime.now() - start)
+                                            + duration)
                                 # OP_KILL_CURSORS returns no reply, fake one.
                                 reply = {'cursorsUnknown': cursor_ids, 'ok': 1}
                                 monitoring.publish_command_success(
-                                    duration, reply, 'killCursors', request_id, address)
+                                    duration, reply, 'killCursors', request_id,
+                                    address)
 
                 except ConnectionFailure as exc:
                     warnings.warn("couldn't close cursor on %s: %s"

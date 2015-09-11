@@ -60,6 +60,7 @@ _OP_MAP = {
 
 _UJOIN = u("%s.%s")
 
+
 def _randint():
     """Generate a pseudo random 32 bit integer."""
     return random.randint(MIN_INT32, MAX_INT32)
@@ -290,7 +291,7 @@ class _GetMore(object):
         return get_more(ns, self.ntoreturn, self.cursor_id)
 
 
-class CursorAddress(tuple):
+class _CursorAddress(tuple):
     """The server address (host, port) of a cursor, with namespace property."""
 
     def __new__(cls, address, namespace=None):
@@ -304,12 +305,12 @@ class CursorAddress(tuple):
         return self.__namespace
 
     def __hash__(self):
-        # Two CursorAddress instances with different namespaces
+        # Two _CursorAddress instances with different namespaces
         # must not hash the same.
         return (self + (self.__namespace,)).__hash__()
 
     def __eq__(self, other):
-        if isinstance(other, CursorAddress):
+        if isinstance(other, _CursorAddress):
             return (tuple(self) == tuple(other)
                     and self.namespace == other.namespace)
         return NotImplemented

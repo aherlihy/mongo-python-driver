@@ -42,7 +42,7 @@ from pymongo.errors import (AutoReconnect,
                             CursorNotFound,
                             NetworkTimeout,
                             InvalidURI)
-from pymongo.message import CursorAddress
+from pymongo.message import _CursorAddress
 from pymongo.mongo_client import MongoClient
 from pymongo.pool import SocketInfo
 from pymongo.read_preferences import ReadPreference
@@ -723,7 +723,7 @@ class TestClient(IntegrationTest):
         next(cursor)
         self.client.kill_cursors(
             [cursor.cursor_id],
-            CursorAddress(self.client.address, self.collection.full_name))
+            _CursorAddress(self.client.address, self.collection.full_name))
 
         # Prevent killcursors from reaching the server while a getmore is in
         # progress -- the server logs "Assertion: 16089:Cannot kill active
@@ -754,7 +754,7 @@ class TestClient(IntegrationTest):
         next(cursor)
         self.client.kill_cursors(
             [cursor.cursor_id],
-            CursorAddress(self.client.address))
+            _CursorAddress(self.client.address))
 
         # Prevent killcursors from reaching the server while a getmore is in
         # progress -- the server logs "Assertion: 16089:Cannot kill active

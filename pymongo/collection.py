@@ -1047,7 +1047,7 @@ class Collection(common.BaseObject):
             result = self._command(sock_info, cmd, slave_ok)
 
         return [CommandCursor(self, cursor['cursor'], sock_info.address)
-                    for cursor in result['cursors']]
+                for cursor in result['cursors']]
 
     def _count(self, cmd):
         """Internal count helper."""
@@ -1357,8 +1357,8 @@ class Collection(common.BaseObject):
                 # Note that a collection can only have 64 indexes, so we don't
                 # technically have to pass len(data) here. There will never be
                 # an OP_GET_MORE call.
-                return CommandCursor(coll, cursor, sock_info.address,
-                                     len(data))
+                return CommandCursor(
+                    coll, cursor, sock_info.address, len(data))
 
     def index_information(self):
         """Get information on this collection's indexes.
@@ -1516,8 +1516,8 @@ class Collection(common.BaseObject):
                     "firstBatch": result["result"],
                     "ns": self.full_name,
                 }
-            return CommandCursor(self, cursor, sock_info.address).batch_size(
-                batch_size or 0)
+            return CommandCursor(
+                self, cursor, sock_info.address).batch_size(batch_size or 0)
 
     # key and condition ought to be optional, but deprecation
     # would be painful as argument order would have to change.

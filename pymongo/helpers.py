@@ -84,8 +84,7 @@ def _index_document(index_list):
     return index
 
 
-def _unpack_response(response, cursor_id=None, codec_options=CodecOptions(),
-                     unpack_cursor_result=False):
+def _unpack_response(response, cursor_id=None, codec_options=CodecOptions()):
     """Unpack a response from the database.
 
     Check the response for errors and unpack, returning a dictionary
