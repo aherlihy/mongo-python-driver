@@ -276,9 +276,8 @@ class _GetMore(object):
         return _gen_get_more_command(self.cursor_id, self.coll,
                                      self.ntoreturn, self.max_time_ms), self.db
 
-    def get_message(self, set_slave_ok, is_mongos, use_cmd):
+    def get_message(self, dummy0, dummy1, use_cmd=False):
         """Get a getmore message."""
-        flags = 4 if set_slave_ok else 0
 
         ns = _UJOIN % (self.db, self.coll)
 
@@ -286,7 +285,7 @@ class _GetMore(object):
             ns = _UJOIN % (self.db, "$cmd")
             spec = self.as_command()[0]
 
-            return query(flags, ns, 0, -1, spec, None, self.codec_options)
+            return query(4, ns, 0, -1, spec, None, self.codec_options)
 
         return get_more(ns, self.ntoreturn, self.cursor_id)
 
