@@ -340,7 +340,6 @@ class MongoClient(common.BaseObject):
         self.__lock = threading.Lock()
         self.__cursor_manager = CursorManager(self)
         self.__kill_cursors_queue = []
-        self.__warned_kill_cursors = False
 
         # Cache of existing indexes used by ensure_index ops.
         self.__index_cache = {}
@@ -943,16 +942,6 @@ class MongoClient(common.BaseObject):
                     spec = SON([('killCursors', coll),
                                 ('cursors', cursor_ids)])
                     with server.get_socket(self.__all_credentials) as sock_info:
-                        # Warn the user if namespace is not provided.
-                        if (sock_info.max_wire_version >= 4 and
-                                namespace is None and not
-                                self.__warned_kill_cursors):
-                            sys.stderr.write("Warning: for server >= 3.2 must "
-                                             "supply a namespace when calling "
-                                             "kill_cursors. Defaulting to "
-                                             "legacy OP_KILLCURSORS\n")
-                            self.__warned_kill_cursors = True
-
                         if (sock_info.max_wire_version >= 4 and
                                 namespace is not None):
                             sock_info.command(db, spec, slave_ok=True)

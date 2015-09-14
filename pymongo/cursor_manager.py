@@ -45,8 +45,7 @@ class CursorManager(object):
 
         :Parameters:
           - `cursor_id`: cursor id to close
-          - `address`: the cursor's server's (host, port) pair. If using
-           server >= 3.2, `address` should be a CursorAddress.
+          - `address`: the cursor's server's (host, port) pair.
 
         .. versionchanged:: 3.0
            Now requires an `address` argument.

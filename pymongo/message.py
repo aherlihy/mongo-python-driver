@@ -294,7 +294,7 @@ class _GetMore(object):
 class _CursorAddress(tuple):
     """The server address (host, port) of a cursor, with namespace property."""
 
-    def __new__(cls, address, namespace=None):
+    def __new__(cls, address, namespace):
         self = tuple.__new__(cls, address)
         self.__namespace = namespace
         return self

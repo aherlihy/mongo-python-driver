@@ -739,37 +739,6 @@ class TestClient(IntegrationTest):
 
         wait_until(raises_cursor_not_found, 'close cursor')
 
-    def test_kill_cursors_with_cursoraddress_no_ns(self):
-        if (client_context.is_mongos
-                and not client_context.version.at_least(2, 4, 7)):
-            # Old mongos sends incorrectly formatted error response when
-            # cursor isn't found, see SERVER-9738.
-            raise SkipTest("Can't test kill_cursors against old mongos")
-
-        self.collection = self.client.pymongo_test.test
-        self.collection.drop()
-
-        self.collection.insert_many([{'_id': i} for i in range(20)])
-        cursor = self.collection.find().batch_size(1)
-        next(cursor)
-        self.client.kill_cursors(
-            [cursor.cursor_id],
-            _CursorAddress(self.client.address))
-
-        # Prevent killcursors from reaching the server while a getmore is in
-        # progress -- the server logs "Assertion: 16089:Cannot kill active
-        # cursor."
-        time.sleep(2)
-
-        def raises_cursor_not_found():
-            try:
-                next(cursor)
-                return False
-            except CursorNotFound:
-                return True
-
-        wait_until(raises_cursor_not_found, 'close cursor')
-
     def test_kill_cursors_with_tuple(self):
         if (client_context.is_mongos
                 and not client_context.version.at_least(2, 4, 7)):
