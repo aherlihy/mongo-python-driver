@@ -1050,7 +1050,11 @@ class TestCursor(IntegrationTest):
             list(self.db.test.find().comment('foo'))
             op = self.db.system.profile.find({'ns': 'pymongo_test.test',
                                               'op': 'query',
+<<<<<<< HEAD
                                               query_key: 'foo'})
+=======
+                                              'query.$comment': 'foo'})
+>>>>>>> 99776fa... nits
             self.assertEqual(op.count(), 1)
 
             self.db.test.find().comment('foo').count()

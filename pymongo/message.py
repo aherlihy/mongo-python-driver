@@ -268,8 +268,8 @@ class _GetMore(object):
         self.cursor_id = cursor_id
         self.codec_options = codec_options
         self.max_time_ms = max_time_ms
-        # Temporarily keep track of if this getMore is for a command cursor so
-        # we can use OP_KILLCURSORS until find support for mongos is completed.
+        # XXX: Temporarily keep track of if this getMore is for a command cursor
+        # so we can use OP_KILLCURSORS until find support for mongos is completed.
         self.cmd_cursor = cmd_cursor
 
     def as_command(self):
