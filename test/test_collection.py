@@ -478,6 +478,68 @@ class TestCollection(IntegrationTest):
         # Index wasn't created, only the default index on _id
         self.assertEqual(1, len(db.test.index_information()))
 
+    @client_context.require_version_min(3, 1, 0)
+    def test_index_filter(self):
+        db = self.db
+        db.drop_collection("test")
+        db.test.insert_many([{"x": i, "y": 10 - i, "z": {"w": i}}
+                            for i in range(10)])
+
+        # Test create_index
+        pfe_x = SON([(u'x', SON([(u'$gt', 5)]))])
+        db.test.create_index("x", partial_filter_expression={"x": {"$gt": 5}})
+        info = db.test.index_information()
+        self.assertIn("x_1", info)
+        self.assertEqual(pfe_x, info["x_1"].get("partial_filter_expression"))
+        # Test creating same index with different filter will fail
+        self.assertRaises(OperationFailure, db.test.create_index,
+                          "x", partial_filter_expression={"x": {"$lt": 5}})
+
+        # Test create_index with name
+        pfe_y = SON([(u'y', SON([(u'$gt', -5)]))])
+        db.test.create_index("y", name="y_index",
+                             partial_filter_expression={"y": {"$gt": -5}})
+        info = db.test.index_information()
+        self.assertIn("y_index", info)
+        self.assertEqual(
+            pfe_y, info["y_index"].get("partial_filter_expression"))
+        # Test creating same index with different filter will fail
+        self.assertRaises(OperationFailure, db.test.create_index,
+                          "y", partial_filter_expression={"y": {"$lt": -5}})
+
+        # Test drop_index
+        db.test.drop_index("x_1")
+        info = db.test.index_information()
+        self.assertNotIn("x_1", info)
+        self.assertIn("y_index", info)
+        db.test.drop_index("y_index")
+        info = db.test.index_information()
+        self.assertNotIn("y_index", info)
+        self.assertEqual(len(info), 1)
+
+        # Test create_indexes
+        pfe_xy = SON([(u'y', SON([(u'$exists', True)]))])
+        index_xy = IndexModel(
+            [("x", ASCENDING), ("y", DESCENDING)],
+            partial_filter_expression={"y": {"$exists": True}})
+        pfe_z = SON([(u'z', SON([(u'$type', 3)]))])
+        index_z = IndexModel("z", partial_filter_expression={"z": {"$type": 3}})
+
+        db.test.create_indexes([index_xy, index_z])
+        info = db.test.index_information()
+        self.assertIn("x_1_y_-1", info)
+        self.assertEqual(
+            pfe_xy, info["x_1_y_-1"].get("partial_filter_expression"))
+        self.assertIn("z_1", info)
+        self.assertEqual(pfe_z, info["z_1"].get("partial_filter_expression"))
+        self.assertRaises(OperationFailure, db.test.create_index,
+                          "z", partial_filter_expression={"y": {"$lt": -5}})
+
+        # Test drop_indexes
+        db.test.drop_indexes()
+        info = db.test.index_information()
+        self.assertEqual(len(info), 1)
+
     def test_field_selection(self):
         db = self.db
         db.drop_collection("test")

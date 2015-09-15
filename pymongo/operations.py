@@ -222,6 +222,10 @@ class IndexModel(object):
             collection. MongoDB will automatically delete documents from
             this collection after <int> seconds. The indexed field must
             be a UTC datetime or the data will not expire.
+          - `partial_filter_expression`: A document that specifies a filter for
+            a partial index, supported for server versions >= 3.2. For more
+            information see
+            http://docs.mongodb.org/master/release-notes/3.1-dev-series/#partial-indexes.
 
         See the MongoDB documentation for a full list of supported options by
         server version.
