@@ -222,13 +222,14 @@ class IndexModel(object):
             collection. MongoDB will automatically delete documents from
             this collection after <int> seconds. The indexed field must
             be a UTC datetime or the data will not expire.
-          - `partial_filter_expression`: A document that specifies a filter for
-            a partial index, supported for server versions >= 3.2. For more
-            information see
+          - `partialFilterExpression`: A document that specifies a filter for
+            a partial index. For more information see
             http://docs.mongodb.org/master/release-notes/3.1-dev-series/#partial-indexes.
 
         See the MongoDB documentation for a full list of supported options by
         server version.
+
+        .. note:: `partialFilterIndexes` requires server version **>= 3.2**
 
         :Parameters:
           - `keys`: a single key or a list of (key, direction)
@@ -236,6 +237,9 @@ class IndexModel(object):
           - `**kwargs` (optional): any additional index creation
             options (see the above list) should be passed as keyword
             arguments
+
+        .. versionchanged:: 3.2
+            Added partialFilterExpression to support partial indexes.
         """
         keys = _index_list(keys)
         if "name" not in kwargs:
