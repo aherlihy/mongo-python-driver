@@ -482,63 +482,54 @@ class TestCollection(IntegrationTest):
     def test_index_filter(self):
         db = self.db
         db.drop_collection("test")
-        db.test.insert_many([{"x": i, "y": 10 - i, "z": {"w": i}}
-                            for i in range(10)])
 
-        # Test create_index
-        pfe_x = SON([(u'x', SON([(u'$gt', 5)]))])
-        db.test.create_index("x", partial_filter_expression={"x": {"$gt": 5}})
-        info = db.test.index_information()
-        self.assertIn("x_1", info)
-        self.assertEqual(pfe_x, info["x_1"].get("partial_filter_expression"))
-        # Test creating same index with different filter will fail
-        self.assertRaises(OperationFailure, db.test.create_index,
-                          "x", partial_filter_expression={"x": {"$lt": 5}})
+        # Test bad filter spec on create.
+        self.assertRaises(OperationFailure, db.test.create_index, "x",
+                          partialFilterExpression=5)
+        self.assertRaises(OperationFailure, db.test.create_index, "x",
+                          partialFilterExpression={"x": {"$asdasd": 3}})
+        self.assertRaises(OperationFailure, db.test.create_index, "x",
+                          partialFilterExpression={"$and": 5})
+        self.assertRaises(OperationFailure, db.test.create_index, "x",
+                          partialFilterExpression={
+                              "$and": [{"$and":  [{"x": {"$lt": 2}},
+                                                  {"x": {"$gt": 0}}]},
+                                       {"x": {"$exists": True}}]})
 
-        # Test create_index with name
-        pfe_y = SON([(u'y', SON([(u'$gt', -5)]))])
-        db.test.create_index("y", name="y_index",
-                             partial_filter_expression={"y": {"$gt": -5}})
-        info = db.test.index_information()
-        self.assertIn("y_index", info)
-        self.assertEqual(
-            pfe_y, info["y_index"].get("partial_filter_expression"))
-        # Test creating same index with different filter will fail
-        self.assertRaises(OperationFailure, db.test.create_index,
-                          "y", partial_filter_expression={"y": {"$lt": -5}})
+        self.assertEqual("x_1", db.test.create_index(
+            [('x', ASCENDING)], partialFilterExpression={"a": {"$lte": 1.5}}))
+        db.test.insert_one({"x": 5, "a": 2})
+        db.test.insert_one({"x": 6, "a": 1})
 
-        # Test drop_index
+        # Operations that use the partial index.
+        explain = db.test.find(
+            {"x": 6, "a": 1}).explain()['queryPlanner']['winningPlan']
+        self.assertEqual("x_1", explain.get('inputStage', {}).get('indexName'))
+        self.assertTrue(explain.get('inputStage', {}).get('isPartial'))
+        explain = db.test.find(
+            {"x": {"$gt": 1}, "a": 1}).explain()['queryPlanner']['winningPlan']
+        self.assertEqual("x_1", explain.get('inputStage', {}).get('indexName'))
+        self.assertTrue(explain.get('inputStage', {}).get('isPartial'))
+        explain = db.test.find(
+            {"x": 6,
+             "a": {"$lte": 1}}).explain()['queryPlanner']['winningPlan']
+        self.assertEqual("x_1", explain.get('inputStage', {}).get('indexName'))
+        self.assertTrue(explain.get('inputStage', {}).get('isPartial'))
+
+        # Operations that do not use the partial index.
+        explain = db.test.find(
+            {"x": 6,
+             "a": {"$lte": 1.6}}).explain()['queryPlanner']['winningPlan']
+        self.assertEqual("COLLSCAN", explain.get('stage'))
+        explain = db.test.find(
+            {"x": 6}).explain()['queryPlanner']['winningPlan']
+        self.assertEqual("COLLSCAN", explain.get('stage'))
+
+        # Test drop_indexes.
         db.test.drop_index("x_1")
-        info = db.test.index_information()
-        self.assertNotIn("x_1", info)
-        self.assertIn("y_index", info)
-        db.test.drop_index("y_index")
-        info = db.test.index_information()
-        self.assertNotIn("y_index", info)
-        self.assertEqual(len(info), 1)
-
-        # Test create_indexes
-        pfe_xy = SON([(u'y', SON([(u'$exists', True)]))])
-        index_xy = IndexModel(
-            [("x", ASCENDING), ("y", DESCENDING)],
-            partial_filter_expression={"y": {"$exists": True}})
-        pfe_z = SON([(u'z', SON([(u'$type', 3)]))])
-        index_z = IndexModel("z", partial_filter_expression={"z": {"$type": 3}})
-
-        db.test.create_indexes([index_xy, index_z])
-        info = db.test.index_information()
-        self.assertIn("x_1_y_-1", info)
-        self.assertEqual(
-            pfe_xy, info["x_1_y_-1"].get("partial_filter_expression"))
-        self.assertIn("z_1", info)
-        self.assertEqual(pfe_z, info["z_1"].get("partial_filter_expression"))
-        self.assertRaises(OperationFailure, db.test.create_index,
-                          "z", partial_filter_expression={"y": {"$lt": -5}})
-
-        # Test drop_indexes
-        db.test.drop_indexes()
-        info = db.test.index_information()
-        self.assertEqual(len(info), 1)
+        explain = db.test.find(
+            {"x": 6, "a": 1}).explain()['queryPlanner']['winningPlan']
+        self.assertEqual("COLLSCAN", explain.get('stage'))
 
     def test_field_selection(self):
         db = self.db
