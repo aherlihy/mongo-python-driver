@@ -531,7 +531,7 @@ class Collection(common.BaseObject):
                                        self.codec_options, bwc)
         return ids
 
-    def insert_one(self, document):
+    def insert_one(self, document, bypass_document_validation=None):
         """Insert a single document.
 
           >>> db.test.count({'x': 1})
@@ -546,9 +546,18 @@ class Collection(common.BaseObject):
           - `document`: The document to insert. Must be a mutable mapping
             type. If the document does not have an _id field one will be
             added automatically.
+          - `bypass_document_validation`: (optional) If true, allows the write
+            to opt-out of document level validation. Default is to not send a
+            value.
 
         :Returns:
           - An instance of :class:`~pymongo.results.InsertOneResult`.
+
+        .. note:: `bypass_document_validation` requires server version
+          **>= 3.2**
+
+        .. versionchanged:: 3.2
+          Added bypass_document_validation support
 
         .. versionadded:: 3.0
         """
@@ -559,7 +568,7 @@ class Collection(common.BaseObject):
             return InsertOneResult(self._insert(sock_info, document),
                                    self.write_concern.acknowledged)
 
-    def insert_many(self, documents, ordered=True):
+    def insert_many(self, documents, ordered=True, bypass_document_validation=None):
         """Insert an iterable of documents.
 
           >>> db.test.count()
@@ -577,9 +586,18 @@ class Collection(common.BaseObject):
             occurs all remaining inserts are aborted. If ``False``, documents
             will be inserted on the server in arbitrary order, possibly in
             parallel, and all document inserts will be attempted.
+          - `bypass_document_validation`: (optional) If true, allows the write
+            to opt-out of document level validation. Default is to not send a
+            value.
 
         :Returns:
           An instance of :class:`~pymongo.results.InsertManyResult`.
+
+        .. note:: `bypass_document_validation` requires server version
+          **>= 3.2**
+
+        .. versionchanged:: 3.2
+          Added bypass_document_validation support
 
         .. versionadded:: 3.0
         """
@@ -644,7 +662,8 @@ class Collection(common.BaseObject):
                 message.update, self.__full_name, upsert, multi, criteria,
                 document, acknowledged, concern, check_keys, self.codec_options)
 
-    def replace_one(self, filter, replacement, upsert=False):
+    def replace_one(self, filter, replacement, upsert=False,
+                    bypass_document_validation=None):
         """Replace a single document matching the filter.
 
           >>> for doc in db.test.find({}):
@@ -679,9 +698,18 @@ class Collection(common.BaseObject):
           - `replacement`: The new document.
           - `upsert` (optional): If ``True``, perform an insert if no documents
             match the filter.
+          - `bypass_document_validation`: (optional) If true, allows the write
+            to opt-out of document level validation. Default is to not send a
+            value.
 
         :Returns:
           - An instance of :class:`~pymongo.results.UpdateResult`.
+
+        .. note:: `bypass_document_validation` requires server version
+          **>= 3.2**
+
+        .. versionchanged:: 3.2
+          Added bypass_document_validation support
 
         .. versionadded:: 3.0
         """
@@ -691,7 +719,8 @@ class Collection(common.BaseObject):
             result = self._update(sock_info, filter, replacement, upsert)
         return UpdateResult(result, self.write_concern.acknowledged)
 
-    def update_one(self, filter, update, upsert=False):
+    def update_one(self, filter, update, upsert=False,
+                   bypass_document_validation=None):
         """Update a single document matching the filter.
 
           >>> for doc in db.test.find():
@@ -717,9 +746,18 @@ class Collection(common.BaseObject):
           - `update`: The modifications to apply.
           - `upsert` (optional): If ``True``, perform an insert if no documents
             match the filter.
+          - `bypass_document_validation`: (optional) If true, allows the write
+            to opt-out of document level validation. Default is to not send a
+            value.
 
         :Returns:
           - An instance of :class:`~pymongo.results.UpdateResult`.
+
+        .. note:: `bypass_document_validation` requires server version
+          **>= 3.2**
+
+        .. versionchanged:: 3.2
+          Added bypass_document_validation support
 
         .. versionadded:: 3.0
         """
@@ -730,7 +768,8 @@ class Collection(common.BaseObject):
                                   upsert, check_keys=False)
         return UpdateResult(result, self.write_concern.acknowledged)
 
-    def update_many(self, filter, update, upsert=False):
+    def update_many(self, filter, update, upsert=False,
+                    bypass_document_validation=None):
         """Update one or more documents that match the filter.
 
           >>> for doc in db.test.find():
@@ -756,9 +795,18 @@ class Collection(common.BaseObject):
           - `update`: The modifications to apply.
           - `upsert` (optional): If ``True``, perform an insert if no documents
             match the filter.
+          - `bypass_document_validation`: (optional) If true, allows the write
+            to opt-out of document level validation. Default is to not send a
+            value.
 
         :Returns:
           - An instance of :class:`~pymongo.results.UpdateResult`.
+
+        .. note:: `bypass_document_validation` requires server version
+          **>= 3.2**
+
+        .. versionchanged:: 3.2
+          Added bypass_document_validation support
 
         .. versionadded:: 3.0
         """
