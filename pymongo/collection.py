@@ -442,7 +442,8 @@ class Collection(common.BaseObject):
 
     def _insert_one(
             self, sock_info, doc, ordered,
-            check_keys, manipulate, write_concern, op_id):
+            check_keys, manipulate, write_concern, op_id,
+            bypass_document_validation):
         """Internal helper for inserting a single document."""
         if manipulate:
             doc = self.__database._apply_incoming_manipulators(doc, self)
@@ -459,6 +460,9 @@ class Collection(common.BaseObject):
             command['writeConcern'] = concern
 
         if sock_info.max_wire_version > 1 and acknowledged:
+            if (bypass_document_validation is not None
+                    and sock_info.max_wire_version >= 4):
+                command['bypassDocumentValidation'] = bypass_document_validation
             # Insert command.
             result = sock_info.command(self.__database.name,
                                        command,
@@ -474,12 +478,16 @@ class Collection(common.BaseObject):
         return doc.get('_id')
 
     def _insert(self, sock_info, docs, ordered=True, check_keys=True,
-                manipulate=False, write_concern=None, op_id=None):
+                manipulate=False, write_concern=None, op_id=None,
+                bypass_document_validation=None):
         """Internal insert helper."""
+        if bypass_document_validation is not None:
+            common.validate_boolean(bypass_document_validation)
         if isinstance(docs, collections.MutableMapping):
             return self._insert_one(
                 sock_info, docs, ordered,
-                check_keys, manipulate, write_concern, op_id)
+                check_keys, manipulate, write_concern, op_id,
+                bypass_document_validation)
 
         ids = []
 
@@ -516,9 +524,12 @@ class Collection(common.BaseObject):
             command['writeConcern'] = concern
         if op_id is None:
             op_id = message._randint()
+        if (bypass_document_validation is not None
+                and sock_info.max_wire_version >= 4):
+            command['bypassDocumentValidation'] = bypass_document_validation
         bwc = message._BulkWriteContext(
             self.database.name, command, sock_info, op_id)
-        if sock_info.max_wire_version > 1 and acknowledged:
+        if sock_info.max_wire_version > 1 and acknowledged: #TODO: is acknowledged needed in order to send a bypassDocVal?
             # Batched insert command.
             results = message._do_batched_write_command(
                 self.database.name + ".$cmd", message._INSERT, command,
@@ -565,10 +576,13 @@ class Collection(common.BaseObject):
         if "_id" not in document:
             document["_id"] = ObjectId()
         with self._socket_for_writes() as sock_info:
-            return InsertOneResult(self._insert(sock_info, document),
+            return InsertOneResult(self._insert(
+                sock_info, document,
+                bypass_document_validation=bypass_document_validation),
                                    self.write_concern.acknowledged)
 
-    def insert_many(self, documents, ordered=True, bypass_document_validation=None):
+    def insert_many(self, documents, ordered=True,
+                    bypass_document_validation=None):
         """Insert an iterable of documents.
 
           >>> db.test.count()
@@ -620,9 +634,12 @@ class Collection(common.BaseObject):
 
     def _update(self, sock_info, criteria, document, upsert=False,
                 check_keys=True, multi=False, manipulate=False,
-                write_concern=None, op_id=None, ordered=True):
+                write_concern=None, op_id=None, ordered=True,
+                bypass_document_validation=None):
         """Internal update / replace helper."""
         common.validate_boolean("upsert", upsert)
+        if bypass_document_validation is not None:
+            common.validate_boolean(bypass_document_validation)
         if manipulate:
             document = self.__database._fix_incoming(document, self)
         concern = (write_concern or self.write_concern).document
@@ -637,6 +654,9 @@ class Collection(common.BaseObject):
             command['writeConcern'] = concern
         if sock_info.max_wire_version > 1 and acknowledged:
             # Update command.
+            if (bypass_document_validation is not None
+                    and sock_info.max_wire_version >= 4):
+                command['bypassDocumentValidation'] = bypass_document_validation
 
             # The command result has to be published for APM unmodified
             # so we make a shallow copy here before adding updatedExisting.
@@ -716,7 +736,8 @@ class Collection(common.BaseObject):
         common.validate_is_mapping("filter", filter)
         common.validate_ok_for_replace(replacement)
         with self._socket_for_writes() as sock_info:
-            result = self._update(sock_info, filter, replacement, upsert)
+            result = self._update(sock_info, filter, replacement, upsert,
+                                  bypass_document_validation=bypass_document_validation)
         return UpdateResult(result, self.write_concern.acknowledged)
 
     def update_one(self, filter, update, upsert=False,
@@ -765,7 +786,8 @@ class Collection(common.BaseObject):
         common.validate_ok_for_update(update)
         with self._socket_for_writes() as sock_info:
             result = self._update(sock_info, filter, update,
-                                  upsert, check_keys=False)
+                                  upsert, check_keys=False,
+                                  bypass_document_validation=bypass_document_validation)
         return UpdateResult(result, self.write_concern.acknowledged)
 
     def update_many(self, filter, update, upsert=False,
@@ -814,7 +836,8 @@ class Collection(common.BaseObject):
         common.validate_ok_for_update(update)
         with self._socket_for_writes() as sock_info:
             result = self._update(sock_info, filter, update, upsert,
-                                  check_keys=False, multi=True)
+                                  check_keys=False, multi=True,
+                                  bypass_document_validation=bypass_document_validation)
         return UpdateResult(result, self.write_concern.acknowledged)
 
     def drop(self):
@@ -1516,6 +1539,9 @@ class Collection(common.BaseObject):
             mongos does not support returning aggregate results using a cursor.
             The default is ``True``. Set this to ``False`` when upgrading a 2.4
             or older sharded cluster to 2.6 or newer (see the warning below).
+          - `bypass_document_validation`: (optional) If true, allows the write
+            to opt-out of document level validation. Default is to not send a
+            value.
 
         The :meth:`aggregate` method obeys the :attr:`read_preference` of this
         :class:`Collection`. Please note that using the ``$out`` pipeline stage
@@ -1532,6 +1558,9 @@ class Collection(common.BaseObject):
            use :meth:`~pymongo.database.Database.command` instead. An
            example is included in the :ref:`aggregate-examples` documentation.
 
+        .. note:: `bypass_document_validation` requires server version
+          **>= 3.2**
+
         :Parameters:
           - `pipeline`: a list of aggregation pipeline stages
           - `**kwargs` (optional): See list of options above.
@@ -1540,6 +1569,8 @@ class Collection(common.BaseObject):
           A :class:`~pymongo.command_cursor.CommandCursor` over the result
           set.
 
+        .. versionchanged:: 3.2
+          Added bypass_document_validation support
         .. versionchanged:: 3.0
            The :meth:`aggregate` method always returns a CommandCursor. The
            pipeline argument must be a list.
