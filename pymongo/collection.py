@@ -490,8 +490,6 @@ class Collection(common.BaseObject):
                 manipulate=False, write_concern=None, op_id=None,
                 bypass_document_validation=None):
         """Internal insert helper."""
-        if bypass_document_validation is not None:
-            common.validate_boolean(bypass_document_validation)
         if isinstance(docs, collections.MutableMapping):
             return self._insert_one(
                 sock_info, docs, ordered,
@@ -647,8 +645,6 @@ class Collection(common.BaseObject):
                 bypass_document_validation=None):
         """Internal update / replace helper."""
         common.validate_boolean("upsert", upsert)
-        if bypass_document_validation is not None:
-            common.validate_boolean(bypass_document_validation)
         if manipulate:
             document = self.__database._fix_incoming(document, self)
         concern = (write_concern or self.write_concern).document
