@@ -199,7 +199,7 @@ def _merge_command(run, full_result, results):
 class _Bulk(object):
     """The private guts of the bulk write API.
     """
-    def __init__(self, collection, ordered):
+    def __init__(self, collection, ordered, bypass_document_validation=None):
         """Initialize a _Bulk instance.
         """
         self.collection = collection
@@ -208,6 +208,7 @@ class _Bulk(object):
         self.name = "%s.%s" % (collection.database.name, collection.name)
         self.namespace = collection.database.name + '.$cmd'
         self.executed = False
+        self.bypass_document_validation = bypass_document_validation
 
     def add_insert(self, document):
         """Add an insert document to the list of ops.
@@ -288,6 +289,8 @@ class _Bulk(object):
                        ('ordered', self.ordered)])
             if write_concern.document:
                 cmd['writeConcern'] = write_concern.document
+            if sock_info >= 4 and self.bypass_document_validation is not None:
+                cmd['bypassDocumentValidation'] = self.bypass_document_validation
 
             bwc = _BulkWriteContext(db_name, cmd, sock_info, op_id)
             results = _do_batched_write_command(
@@ -323,7 +326,8 @@ class _Bulk(object):
                                  run.ops,
                                  self.ordered,
                                  write_concern=write_concern,
-                                 op_id=op_id)
+                                 op_id=op_id,
+                                 bypass_document_validation=self.bypass_document_validation)
                 elif run.op_type == _UPDATE:
                     for operation in run.ops:
                         doc = operation['u']
@@ -338,7 +342,8 @@ class _Bulk(object):
                                      operation['multi'],
                                      write_concern=write_concern,
                                      op_id=op_id,
-                                     ordered=self.ordered)
+                                     ordered=self.ordered,
+                                     bypass_document_validation=self.bypass_document_validation)
                 else:
                     for operation in run.ops:
                         coll._delete(sock_info,
@@ -555,7 +560,7 @@ class BulkOperationBuilder(object):
 
     __slots__ = '__bulk'
 
-    def __init__(self, collection, ordered=True):
+    def __init__(self, collection, ordered=True, bypass_document_validation=None):
         """Initialize a new BulkOperationBuilder instance.
 
         :Parameters:
@@ -566,8 +571,17 @@ class BulkOperationBuilder(object):
             in arbitrary order (possibly in parallel on the server), reporting
             any errors that occurred after attempting all operations. Defaults
             to ``True``.
+          - `bypass_document_validation`: (optional) If true, allows the write
+            to opt-out of document level validation. Default is to not send a
+            value.
+
+        .. note:: `bypass_document_validation` requires server version
+          **>= 3.2**
+
+        .. versionchanged:: 3.2
+          Added bypass_document_validation support
         """
-        self.__bulk = _Bulk(collection, ordered)
+        self.__bulk = _Bulk(collection, ordered, bypass_document_validation)
 
     def find(self, selector):
         """Specify selection criteria for bulk operations.
