@@ -712,14 +712,15 @@ class TestCollection(IntegrationTest):
         self.assertFalse(result.acknowledged)
         wait_until(lambda: 0 == db.test.count(), 'delete 2 documents')
 
-    def test_bypass_documentation_validation(self):
+    def test_insert_bypass_document_validation(self):
         db = self.db
         db.test.drop()
         db.create_collection("test", validator={"a": {"$exists": True}})
 
         # Test insert_one
-        self.assertRaises(OperationFailure, db.test.insert_one, {"_id":1, "x": 100})
-        result = db.test.insert_one({"_id":1, "x": 100},
+        self.assertRaises(OperationFailure, db.test.insert_one,
+                          {"_id": 1, "x": 100})
+        result = db.test.insert_one({"_id": 1, "x": 100},
                                     bypass_document_validation=True)
         self.assertTrue(isinstance(result, InsertOneResult))
         self.assertEqual(1, result.inserted_id)
@@ -750,12 +751,19 @@ class TestCollection(IntegrationTest):
             self.assertEqual(1, db.test.count({"a": doc["a"]}))
         self.assertTrue(result.acknowledged)
 
+    def test_replace_bypass_document_validation(self):
+        db = self.db
+        db.test.drop()
+        db.create_collection("test", validator={"a": {"$exists": True}})
+
         # Test replace_one
-        db.test.insert_one({"_id": 200, "a": 101})
-        self.assertRaises(OperationFailure, db.test.replace_one, {"a": 101}, {"y": 1})
+        db.test.insert_one({"a": 101})
+        self.assertRaises(OperationFailure, db.test.replace_one,
+                          {"a": 101}, {"y": 1})
         self.assertEqual(0, db.test.count({"y": 1}))
         self.assertEqual(1, db.test.count({"a": 101}))
-        db.test.replace_one({"a": 101}, {"y": 1}, bypass_document_validation=True)
+        db.test.replace_one({"a": 101}, {"y": 1},
+                            bypass_document_validation=True)
         self.assertEqual(0, db.test.count({"a": 101}))
         self.assertEqual(1, db.test.count({"y": 1}))
         db.test.replace_one({"y": 1}, {"a": 102})
@@ -763,50 +771,87 @@ class TestCollection(IntegrationTest):
         self.assertEqual(0, db.test.count({"a": 101}))
         self.assertEqual(1, db.test.count({"a": 102}))
 
-        db.test.insert_one({"_id": 201, "y": 1}, bypass_document_validation=True)
-        self.assertRaises(OperationFailure, db.test.replace_one, {"y": 1}, {"x": 101})
+        db.test.insert_one({"y": 1}, bypass_document_validation=True)
+        self.assertRaises(OperationFailure, db.test.replace_one,
+                          {"y": 1}, {"x": 101})
         self.assertEqual(0, db.test.count({"x": 101}))
         self.assertEqual(1, db.test.count({"y": 1}))
-        db.test.replace_one({"y": 1}, {"x": 101}, bypass_document_validation=True)
+        db.test.replace_one({"y": 1}, {"x": 101},
+                            bypass_document_validation=True)
         self.assertEqual(0, db.test.count({"y": 1}))
         self.assertEqual(1, db.test.count({"x": 101}))
-        db.test.replace_one({"x": 101}, {"a": 103}, bypass_document_validation=False)
+        db.test.replace_one({"x": 101}, {"a": 103},
+                            bypass_document_validation=False)
         self.assertEqual(0, db.test.count({"x": 101}))
         self.assertEqual(1, db.test.count({"a": 103}))
 
+    def test_update_bypass_document_validation(self):
+        db = self.db
+        db.test.drop()
+        db.test.insert_one({"z": 5})
         db.command(SON([("collMod", "test"), ("validator", {"z": {"$gte": 0}})]))
 
         # Test update_one
-        db.test.insert_one({"z": 5})
-        self.assertRaises(OperationFailure, db.test.update_one, {}, {"$inc": {"z": -10}})
-        self.assertEqual(1, db.test.count({"z": 5}))
+        self.assertRaises(OperationFailure, db.test.update_one,
+                          {"z": 5}, {"$inc": {"z": -10}})
         self.assertEqual(0, db.test.count({"z": -5}))
-        db.test.update_one({}, {"$inc": {"z": -10}}, bypass_document_validation=True)
         self.assertEqual(1, db.test.count({"z": 5}))
+        db.test.update_one({"z": 5}, {"$inc": {"z": -10}},
+                           bypass_document_validation=True)
+        self.assertEqual(0, db.test.count({"z": 5}))
         self.assertEqual(1, db.test.count({"z": -5}))
+        db.test.update_one({"z": -5}, {"$inc": {"z": 6}},
+                           bypass_document_validation=False)
+        self.assertEqual(1, db.test.count({"z": 1}))
+        self.assertEqual(0, db.test.count({"z": -5}))
 
-        # db.test.insert_one({"_id": 200, "a": 101})
-        # self.assertRaises(OperationFailure, db.test.replace_one, {"a": 101}, {"y": 1})
-        # self.assertEqual(0, db.test.count({"y": 1}))
-        # self.assertEqual(1, db.test.count({"a": 101}))
-        # db.test.replace_one({"a": 101}, {"y": 1}, bypass_document_validation=True)
-        # self.assertEqual(0, db.test.count({"a": 101}))
-        # self.assertEqual(1, db.test.count({"y": 1}))
-        # db.test.replace_one({"y": 1}, {"a": 102})
-        # self.assertEqual(0, db.test.count({"y": 1}))
-        # self.assertEqual(0, db.test.count({"a": 101}))
-        # self.assertEqual(1, db.test.count({"a": 102}))
-        #
-        # db.test.insert_one({"_id": 201, "y": 1}, bypass_document_validation=True)
-        # self.assertRaises(OperationFailure, db.test.replace_one, {"y": 1}, {"x": 101})
-        # self.assertEqual(0, db.test.count({"x": 101}))
-        # self.assertEqual(1, db.test.count({"y": 1}))
-        # db.test.replace_one({"y": 1}, {"x": 101}, bypass_document_validation=True)
-        # self.assertEqual(0, db.test.count({"y": 1}))
-        # self.assertEqual(1, db.test.count({"x": 101}))
-        # db.test.replace_one({"x": 101}, {"a": 103}, bypass_document_validation=False)
-        # self.assertEqual(0, db.test.count({"x": 101}))
-        # self.assertEqual(1, db.test.count({"a": 103}))
+        db.test.insert_one({"z": -10},
+                           bypass_document_validation=True)
+        self.assertRaises(OperationFailure, db.test.update_one,
+                          {"z": -10}, {"$inc": {"z": 1}})
+        self.assertEqual(0, db.test.count({"z": -9}))
+        self.assertEqual(1, db.test.count({"z": -10}))
+        db.test.update_one({"z": -10}, {"$inc": {"z": 1}},
+                           bypass_document_validation=True)
+        self.assertEqual(1, db.test.count({"z": -9}))
+        self.assertEqual(0, db.test.count({"z": -10}))
+        db.test.update_one({"z": -9}, {"$inc": {"z": 9}},
+                           bypass_document_validation=False)
+        self.assertEqual(0, db.test.count({"z": -9}))
+        self.assertEqual(1, db.test.count({"z": 0}))
+
+        # Test update_many
+        db.test.insert_many([{"z": i} for i in range(3, 101)])
+        db.test.insert_one({"y": 0},
+                           bypass_document_validation=True)
+        self.assertRaises(OperationFailure, db.test.update_many, {},
+                          {"$inc": {"z": -100}})
+        self.assertEqual(100, db.test.count({"z": {"$gte": 0}}))
+        self.assertEqual(0, db.test.count({"z": {"$lt": 0}}))
+        self.assertEqual(0, db.test.count({"y": 0, "z": -100}))
+        db.test.update_many({"z": {"$gte": 0}}, {"$inc": {"z": -100}},
+                            bypass_document_validation=True)
+        self.assertEqual(0, db.test.count({"z": {"$gt": 0}}))
+        self.assertEqual(100, db.test.count({"z": {"$lte": 0}}))
+        db.test.update_many({"z": {"$gt": -50}}, {"$inc": {"z": 100}},
+                            bypass_document_validation=False)
+        self.assertEqual(50, db.test.count({"z": {"$gt": 0}}))
+        self.assertEqual(50, db.test.count({"z": {"$lt": 0}}))
+
+        db.test.insert_many([{"z": -i} for i in range(50)],
+                            bypass_document_validation=True)
+        self.assertRaises(OperationFailure, db.test.update_many, {}, {"$inc": {"z": 1}})
+        self.assertEqual(100, db.test.count({"z": {"$lte": 0}}))
+        self.assertEqual(50, db.test.count({"z": {"$gt": 1}}))
+        db.test.update_many({"z": {"$gte": 0}}, {"$inc": {"z": -100}},
+                            bypass_document_validation=True)
+        self.assertEqual(0, db.test.count({"z": {"$gt": 0}}))
+        self.assertEqual(150, db.test.count({"z": {"$lte": 0}}))
+        db.test.update_many({"z": {"$lte": 0}}, {"$inc": {"z": 100}},
+                            bypass_document_validation=False)
+        self.assertEqual(150, db.test.count({"z": {"$gte": 0}}))
+        self.assertEqual(0, db.test.count({"z": {"$lt": 0}}))
+
 
 
 
