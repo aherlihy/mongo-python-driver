@@ -307,14 +307,14 @@ class Collection(common.BaseObject):
                           write_concern or self.write_concern,
                           read_concern or self.read_concern)
 
-    def initialize_unordered_bulk_op(self, bypass_document_validation=None):
+    def initialize_unordered_bulk_op(self, bypass_doc_validation=None):
         """Initialize an unordered batch of write operations.
 
         Operations will be performed on the server in arbitrary order,
         possibly in parallel. All operations will be attempted.
 
         :Parameters:
-          - `bypass_document_validation`: (optional) If true, allows the write
+          - `bypass_doc_validation`: (optional) If true, allows the write
             to opt-out of document level validation. Default is to not send a
             value.
 
@@ -322,19 +322,19 @@ class Collection(common.BaseObject):
 
         See :ref:`unordered_bulk` for examples.
 
-        .. note:: `bypass_document_validation` requires server version
+        .. note:: `bypass_doc_validation` requires server version
           **>= 3.2**
 
         .. versionchanged:: 3.2
-          Added bypass_document_validation support
+          Added bypass_doc_validation support
 
         .. versionadded:: 2.7
         """
         return BulkOperationBuilder(
             self, ordered=False,
-            bypass_document_validation=bypass_document_validation)
+            bypass_doc_validation=bypass_doc_validation)
 
-    def initialize_ordered_bulk_op(self, bypass_document_validation=None):
+    def initialize_ordered_bulk_op(self, bypass_doc_validation=None):
         """Initialize an ordered batch of write operations.
 
         Operations will be performed on the server serially, in the
@@ -342,7 +342,7 @@ class Collection(common.BaseObject):
         are aborted.
 
         :Parameters:
-          - `bypass_document_validation`: (optional) If true, allows the write
+          - `bypass_doc_validation`: (optional) If true, allows the write
             to opt-out of document level validation. Default is to not send a
             value.
 
@@ -350,19 +350,19 @@ class Collection(common.BaseObject):
 
         See :ref:`ordered_bulk` for examples.
 
-        .. note:: `bypass_document_validation` requires server version
+        .. note:: `bypass_doc_validation` requires server version
           **>= 3.2**
 
         .. versionchanged:: 3.2
-          Added bypass_document_validation support
+          Added bypass_doc_validation support
 
         .. versionadded:: 2.7
         """
         return BulkOperationBuilder(
             self, ordered=True,
-            bypass_document_validation=bypass_document_validation)
+            bypass_doc_validation=bypass_doc_validation)
 
-    def bulk_write(self, requests, ordered=True, bypass_document_validation=None):
+    def bulk_write(self, requests, ordered=True, bypass_doc_validation=None):
         """Send a batch of write operations to the server.
 
         Requests are passed as a list of write operation instances (
@@ -406,25 +406,25 @@ class Collection(common.BaseObject):
             occurs all remaining operations are aborted. If ``False`` requests
             will be performed on the server in arbitrary order, possibly in
             parallel, and all operations will be attempted.
-          - `bypass_document_validation`: (optional) If true, allows the write
+          - `bypass_doc_validation`: (optional) If true, allows the write
             to opt-out of document level validation. Default is to not send a
             value.
 
         :Returns:
           An instance of :class:`~pymongo.results.BulkWriteResult`.
 
-        .. note:: `bypass_document_validation` requires server version
+        .. note:: `bypass_doc_validation` requires server version
           **>= 3.2**
 
         .. versionchanged:: 3.2
-          Added bypass_document_validation support
+          Added bypass_doc_validation support
 
         .. versionadded:: 3.0
         """
         if not isinstance(requests, list):
             raise TypeError("requests must be a list")
 
-        blk = _Bulk(self, ordered, bypass_document_validation)
+        blk = _Bulk(self, ordered, bypass_doc_validation)
         for request in requests:
             if not isinstance(request, _WriteOp):
                 raise TypeError("%r is not a valid request" % (request,))
@@ -478,7 +478,7 @@ class Collection(common.BaseObject):
     def _insert_one(
             self, sock_info, doc, ordered,
             check_keys, manipulate, write_concern, op_id,
-            bypass_document_validation):
+            bypass_doc_validation):
         """Internal helper for inserting a single document."""
         if manipulate:
             doc = self.__database._apply_incoming_manipulators(doc, self)
@@ -495,9 +495,9 @@ class Collection(common.BaseObject):
             command['writeConcern'] = concern
 
         if sock_info.max_wire_version > 1 and acknowledged:
-            if (bypass_document_validation is not None
+            if (bypass_doc_validation is not None
                     and sock_info.max_wire_version >= 4):
-                command['bypassDocumentValidation'] = bypass_document_validation
+                command['bypassDocumentValidation'] = bypass_doc_validation
             # Insert command.
             result = sock_info.command(self.__database.name,
                                        command,
@@ -514,13 +514,13 @@ class Collection(common.BaseObject):
 
     def _insert(self, sock_info, docs, ordered=True, check_keys=True,
                 manipulate=False, write_concern=None, op_id=None,
-                bypass_document_validation=None):
+                bypass_doc_validation=None):
         """Internal insert helper."""
         if isinstance(docs, collections.MutableMapping):
             return self._insert_one(
                 sock_info, docs, ordered,
                 check_keys, manipulate, write_concern, op_id,
-                bypass_document_validation)
+                bypass_doc_validation)
 
         ids = []
 
@@ -557,9 +557,9 @@ class Collection(common.BaseObject):
             command['writeConcern'] = concern
         if op_id is None:
             op_id = message._randint()
-        if (bypass_document_validation is not None
+        if (bypass_doc_validation is not None
                 and sock_info.max_wire_version >= 4):
-            command['bypassDocumentValidation'] = bypass_document_validation
+            command['bypassDocumentValidation'] = bypass_doc_validation
         bwc = message._BulkWriteContext(
             self.database.name, command, sock_info, op_id)
         if sock_info.max_wire_version > 1 and acknowledged:
@@ -575,7 +575,7 @@ class Collection(common.BaseObject):
                                        self.codec_options, bwc)
         return ids
 
-    def insert_one(self, document, bypass_document_validation=None):
+    def insert_one(self, document, bypass_doc_validation=None):
         """Insert a single document.
 
           >>> db.test.count({'x': 1})
@@ -590,18 +590,18 @@ class Collection(common.BaseObject):
           - `document`: The document to insert. Must be a mutable mapping
             type. If the document does not have an _id field one will be
             added automatically.
-          - `bypass_document_validation`: (optional) If true, allows the write
+          - `bypass_doc_validation`: (optional) If true, allows the write
             to opt-out of document level validation. Default is to not send a
             value.
 
         :Returns:
           - An instance of :class:`~pymongo.results.InsertOneResult`.
 
-        .. note:: `bypass_document_validation` requires server version
+        .. note:: `bypass_doc_validation` requires server version
           **>= 3.2**
 
         .. versionchanged:: 3.2
-          Added bypass_document_validation support
+          Added bypass_doc_validation support
 
         .. versionadded:: 3.0
         """
@@ -609,13 +609,13 @@ class Collection(common.BaseObject):
         if "_id" not in document:
             document["_id"] = ObjectId()
         with self._socket_for_writes() as sock_info:
-            return InsertOneResult(self._insert(
-                sock_info, document,
-                bypass_document_validation=bypass_document_validation),
-                                   self.write_concern.acknowledged)
+            return InsertOneResult(
+                self._insert(sock_info, document,
+                             bypass_doc_validation=bypass_doc_validation),
+                self.write_concern.acknowledged)
 
     def insert_many(self, documents, ordered=True,
-                    bypass_document_validation=None):
+                    bypass_doc_validation=None):
         """Insert an iterable of documents.
 
           >>> db.test.count()
@@ -633,18 +633,18 @@ class Collection(common.BaseObject):
             occurs all remaining inserts are aborted. If ``False``, documents
             will be inserted on the server in arbitrary order, possibly in
             parallel, and all document inserts will be attempted.
-          - `bypass_document_validation`: (optional) If true, allows the write
+          - `bypass_doc_validation`: (optional) If true, allows the write
             to opt-out of document level validation. Default is to not send a
             value.
 
         :Returns:
           An instance of :class:`~pymongo.results.InsertManyResult`.
 
-        .. note:: `bypass_document_validation` requires server version
+        .. note:: `bypass_doc_validation` requires server version
           **>= 3.2**
 
         .. versionchanged:: 3.2
-          Added bypass_document_validation support
+          Added bypass_doc_validation support
 
         .. versionadded:: 3.0
         """
@@ -660,7 +660,7 @@ class Collection(common.BaseObject):
                 inserted_ids.append(document["_id"])
                 yield (message._INSERT, document)
 
-        blk = _Bulk(self, ordered, bypass_document_validation)
+        blk = _Bulk(self, ordered, bypass_doc_validation)
         blk.ops = [doc for doc in gen()]
         blk.execute(self.write_concern.document)
         return InsertManyResult(inserted_ids, self.write_concern.acknowledged)
@@ -668,7 +668,7 @@ class Collection(common.BaseObject):
     def _update(self, sock_info, criteria, document, upsert=False,
                 check_keys=True, multi=False, manipulate=False,
                 write_concern=None, op_id=None, ordered=True,
-                bypass_document_validation=None):
+                bypass_doc_validation=None):
         """Internal update / replace helper."""
         common.validate_boolean("upsert", upsert)
         if manipulate:
@@ -685,9 +685,9 @@ class Collection(common.BaseObject):
             command['writeConcern'] = concern
         if sock_info.max_wire_version > 1 and acknowledged:
             # Update command.
-            if (bypass_document_validation is not None
+            if (bypass_doc_validation is not None
                     and sock_info.max_wire_version >= 4):
-                command['bypassDocumentValidation'] = bypass_document_validation
+                command['bypassDocumentValidation'] = bypass_doc_validation
 
             # The command result has to be published for APM unmodified
             # so we make a shallow copy here before adding updatedExisting.
@@ -714,7 +714,7 @@ class Collection(common.BaseObject):
                 document, acknowledged, concern, check_keys, self.codec_options)
 
     def replace_one(self, filter, replacement, upsert=False,
-                    bypass_document_validation=None):
+                    bypass_doc_validation=None):
         """Replace a single document matching the filter.
 
           >>> for doc in db.test.find({}):
@@ -749,18 +749,18 @@ class Collection(common.BaseObject):
           - `replacement`: The new document.
           - `upsert` (optional): If ``True``, perform an insert if no documents
             match the filter.
-          - `bypass_document_validation`: (optional) If true, allows the write
+          - `bypass_doc_validation`: (optional) If true, allows the write
             to opt-out of document level validation. Default is to not send a
             value.
 
         :Returns:
           - An instance of :class:`~pymongo.results.UpdateResult`.
 
-        .. note:: `bypass_document_validation` requires server version
+        .. note:: `bypass_doc_validation` requires server version
           **>= 3.2**
 
         .. versionchanged:: 3.2
-          Added bypass_document_validation support
+          Added bypass_doc_validation support
 
         .. versionadded:: 3.0
         """
@@ -768,11 +768,11 @@ class Collection(common.BaseObject):
         common.validate_ok_for_replace(replacement)
         with self._socket_for_writes() as sock_info:
             result = self._update(sock_info, filter, replacement, upsert,
-                                  bypass_document_validation=bypass_document_validation)
+                                  bypass_doc_validation=bypass_doc_validation)
         return UpdateResult(result, self.write_concern.acknowledged)
 
     def update_one(self, filter, update, upsert=False,
-                   bypass_document_validation=None):
+                   bypass_doc_validation=None):
         """Update a single document matching the filter.
 
           >>> for doc in db.test.find():
@@ -798,18 +798,18 @@ class Collection(common.BaseObject):
           - `update`: The modifications to apply.
           - `upsert` (optional): If ``True``, perform an insert if no documents
             match the filter.
-          - `bypass_document_validation`: (optional) If true, allows the write
+          - `bypass_doc_validation`: (optional) If true, allows the write
             to opt-out of document level validation. Default is to not send a
             value.
 
         :Returns:
           - An instance of :class:`~pymongo.results.UpdateResult`.
 
-        .. note:: `bypass_document_validation` requires server version
+        .. note:: `bypass_doc_validation` requires server version
           **>= 3.2**
 
         .. versionchanged:: 3.2
-          Added bypass_document_validation support
+          Added bypass_doc_validation support
 
         .. versionadded:: 3.0
         """
@@ -818,11 +818,11 @@ class Collection(common.BaseObject):
         with self._socket_for_writes() as sock_info:
             result = self._update(sock_info, filter, update,
                                   upsert, check_keys=False,
-                                  bypass_document_validation=bypass_document_validation)
+                                  bypass_doc_validation=bypass_doc_validation)
         return UpdateResult(result, self.write_concern.acknowledged)
 
     def update_many(self, filter, update, upsert=False,
-                    bypass_document_validation=None):
+                    bypass_doc_validation=None):
         """Update one or more documents that match the filter.
 
           >>> for doc in db.test.find():
@@ -848,18 +848,18 @@ class Collection(common.BaseObject):
           - `update`: The modifications to apply.
           - `upsert` (optional): If ``True``, perform an insert if no documents
             match the filter.
-          - `bypass_document_validation`: (optional) If true, allows the write
+          - `bypass_doc_validation`: (optional) If true, allows the write
             to opt-out of document level validation. Default is to not send a
             value.
 
         :Returns:
           - An instance of :class:`~pymongo.results.UpdateResult`.
 
-        .. note:: `bypass_document_validation` requires server version
+        .. note:: `bypass_doc_validation` requires server version
           **>= 3.2**
 
         .. versionchanged:: 3.2
-          Added bypass_document_validation support
+          Added bypass_doc_validation support
 
         .. versionadded:: 3.0
         """
@@ -868,7 +868,7 @@ class Collection(common.BaseObject):
         with self._socket_for_writes() as sock_info:
             result = self._update(sock_info, filter, update, upsert,
                                   check_keys=False, multi=True,
-                                  bypass_document_validation=bypass_document_validation)
+                                  bypass_doc_validation=bypass_doc_validation)
         return UpdateResult(result, self.write_concern.acknowledged)
 
     def drop(self):
@@ -1570,7 +1570,7 @@ class Collection(common.BaseObject):
             mongos does not support returning aggregate results using a cursor.
             The default is ``True``. Set this to ``False`` when upgrading a 2.4
             or older sharded cluster to 2.6 or newer (see the warning below).
-          - `bypass_document_validation`: (optional) If true, allows the write
+          - `bypass_doc_validation`: (optional) If true, allows the write
             to opt-out of document level validation. Default is to not send a
             value.
 
@@ -1589,7 +1589,7 @@ class Collection(common.BaseObject):
            use :meth:`~pymongo.database.Database.command` instead. An
            example is included in the :ref:`aggregate-examples` documentation.
 
-        .. note:: `bypass_document_validation` requires server version
+        .. note:: `bypass_doc_validation` requires server version
           **>= 3.2**
 
         :Parameters:
@@ -1601,7 +1601,7 @@ class Collection(common.BaseObject):
           set.
 
         .. versionchanged:: 3.2
-          Added bypass_document_validation support
+          Added bypass_doc_validation support
         .. versionchanged:: 3.0
            The :meth:`aggregate` method always returns a CommandCursor. The
            pipeline argument must be a list.
