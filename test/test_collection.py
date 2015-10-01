@@ -32,6 +32,7 @@ from bson.son import SON
 from pymongo import (ASCENDING, DESCENDING, GEO2D,
                      GEOHAYSTACK, GEOSPHERE, HASHED, TEXT)
 from pymongo import MongoClient, monitoring
+from pymongo.bulk import BulkWriteError
 from pymongo.collection import Collection, ReturnDocument
 from pymongo.command_cursor import CommandCursor
 from pymongo.cursor import CursorType
@@ -40,7 +41,7 @@ from pymongo.errors import (DuplicateKeyError,
                             InvalidName,
                             InvalidOperation,
                             OperationFailure)
-from pymongo.operations import IndexModel
+from pymongo.operations import *
 from pymongo.read_preferences import ReadPreference
 from pymongo.results import (InsertOneResult,
                              InsertManyResult,
@@ -712,6 +713,7 @@ class TestCollection(IntegrationTest):
         self.assertFalse(result.acknowledged)
         wait_until(lambda: 0 == db.test.count(), 'delete 2 documents')
 
+    @client_context.require_version_min(3, 1, 9, -1)
     def test_insert_bypass_document_validation(self):
         db = self.db
         db.test.drop()
@@ -751,6 +753,7 @@ class TestCollection(IntegrationTest):
             self.assertEqual(1, db.test.count({"a": doc["a"]}))
         self.assertTrue(result.acknowledged)
 
+    @client_context.require_version_min(3, 1, 9, -1)
     def test_replace_bypass_document_validation(self):
         db = self.db
         db.test.drop()
@@ -785,6 +788,7 @@ class TestCollection(IntegrationTest):
         self.assertEqual(0, db.test.count({"x": 101}))
         self.assertEqual(1, db.test.count({"a": 103}))
 
+    @client_context.require_version_min(3, 1, 9, -1)
     def test_update_bypass_document_validation(self):
         db = self.db
         db.test.drop()
@@ -852,16 +856,27 @@ class TestCollection(IntegrationTest):
         self.assertEqual(150, db.test.count({"z": {"$gte": 0}}))
         self.assertEqual(0, db.test.count({"z": {"$lt": 0}}))
 
+    @client_context.require_version_min(3, 1, 9, -1)
+    def test_bypass_document_validation_bulk_write(self):
+        db = self.db
+        db.test.drop()
+        db.create_collection("test", validator={"a": {"$gte": 0}})
+        ops = [InsertOne({"a": -10}),
+               InsertOne({"a": -11}),
+               InsertOne({"a": -12}), # -10, -11, -12
+               UpdateOne({"a": {"$lte": -10}}, {"$inc": {"a": 1}}), # -9, -11, -12
+               UpdateMany({"a": {"$lte": -10}}, {"$inc": {"a": 1}}), # -9, -10, -11
+               ReplaceOne({"a": {"$lte": -10}}, {"a": -1})] # -9, -10, -1
+        db.test.bulk_write(ops, bypass_document_validation=True)
 
+        self.assertEqual(3, db.test.count())
+        self.assertEqual(1, db.test.count({"a": -11}))
+        self.assertEqual(1, db.test.count({"a": -1}))
+        self.assertEqual(1, db.test.count({"a": -9}))
 
-
-
-
-
-
-
-
-
+        # Assert that the operations would fail without bypass_doc_val
+        for op in ops:
+            self.assertRaises(BulkWriteError, db.test.bulk_write, [op])
 
     def test_find_by_default_dct(self):
         db = self.db
