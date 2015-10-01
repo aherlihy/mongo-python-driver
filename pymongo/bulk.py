@@ -199,7 +199,7 @@ def _merge_command(run, full_result, results):
 class _Bulk(object):
     """The private guts of the bulk write API.
     """
-    def __init__(self, collection, ordered, bypass_document_validation=None):
+    def __init__(self, collection, ordered, bypass_doc_validation=None):
         """Initialize a _Bulk instance.
         """
         self.collection = collection
@@ -208,7 +208,7 @@ class _Bulk(object):
         self.name = "%s.%s" % (collection.database.name, collection.name)
         self.namespace = collection.database.name + '.$cmd'
         self.executed = False
-        self.bypass_doc_validation = bypass_document_validation
+        self.bypass_doc_validation = bypass_doc_validation
 
     def add_insert(self, document):
         """Add an insert document to the list of ops.
