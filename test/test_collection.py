@@ -478,7 +478,7 @@ class TestCollection(IntegrationTest):
         # Index wasn't created, only the default index on _id
         self.assertEqual(1, len(db.test.index_information()))
 
-    @client_context.require_version_min(3, 1, 0)
+    @client_context.require_version_min(3, 1, 9, -1)
     def test_index_filter(self):
         db = self.db
         db.drop_collection("test")

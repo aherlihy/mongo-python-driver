@@ -1229,8 +1229,7 @@ class Collection(common.BaseObject):
             this collection after <int> seconds. The indexed field must
             be a UTC datetime or the data will not expire.
           - `partialFilterExpression`: A document that specifies a filter for
-            a partial index. For more information see
-            http://docs.mongodb.org/master/release-notes/3.1-dev-series/#partial-indexes.
+            a partial index.
 
         See the MongoDB documentation for a full list of supported options by
         server version.
