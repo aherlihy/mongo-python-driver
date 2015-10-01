@@ -143,25 +143,31 @@ class TestBulk(BulkTestBase):
 
         # Test insert
         self.coll.insert_one({"z": 0})
-        self.db.command(SON([("collMod", "test"), ("validator", {"z": {"$gte": 0}})]))
-        bulk = self.coll.initialize_ordered_bulk_op(bypass_doc_validation=False)
+        self.db.command(SON([("collMod", "test"),
+                             ("validator", {"z": {"$gte": 0}})]))
+        bulk = self.coll.initialize_ordered_bulk_op(
+            bypass_doc_validation=False)
         bulk.insert({"z": -1}) # error
         self.assertRaises(BulkWriteError, bulk.execute)
         self.assertEqual(0, self.coll.count({"z": -1}))
 
-        bulk = self.coll.initialize_ordered_bulk_op(bypass_doc_validation=True)
+        bulk = self.coll.initialize_ordered_bulk_op(
+            bypass_doc_validation=True)
         bulk.insert({"z": -1})
         bulk.execute()
         self.assertEqual(1, self.coll.count({"z": -1}))
 
         self.coll.insert_one({"z": 0})
-        self.db.command(SON([("collMod", "test"), ("validator", {"z": {"$gte": 0}})]))
-        bulk = self.coll.initialize_unordered_bulk_op(bypass_doc_validation=False)
+        self.db.command(SON([("collMod", "test"),
+                             ("validator", {"z": {"$gte": 0}})]))
+        bulk = self.coll.initialize_unordered_bulk_op(
+            bypass_doc_validation=False)
         bulk.insert({"z": -1}) # error
         self.assertRaises(BulkWriteError, bulk.execute)
         self.assertEqual(1, self.coll.count({"z": -1}))
 
-        bulk = self.coll.initialize_unordered_bulk_op(bypass_doc_validation=True)
+        bulk = self.coll.initialize_unordered_bulk_op(
+            bypass_doc_validation=True)
         bulk.insert({"z": -1})
         bulk.execute()
         self.assertEqual(2, self.coll.count({"z": -1}))

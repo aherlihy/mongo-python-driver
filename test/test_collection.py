@@ -793,7 +793,8 @@ class TestCollection(IntegrationTest):
         db = self.db
         db.test.drop()
         db.test.insert_one({"z": 5})
-        db.command(SON([("collMod", "test"), ("validator", {"z": {"$gte": 0}})]))
+        db.command(SON([("collMod", "test"),
+                        ("validator", {"z": {"$gte": 0}})]))
 
         # Test update_one
         self.assertRaises(OperationFailure, db.test.update_one,
@@ -844,7 +845,8 @@ class TestCollection(IntegrationTest):
 
         db.test.insert_many([{"z": -i} for i in range(50)],
                             bypass_doc_validation=True)
-        self.assertRaises(OperationFailure, db.test.update_many, {}, {"$inc": {"z": 1}})
+        self.assertRaises(OperationFailure, db.test.update_many,
+            {}, {"$inc": {"z": 1}})
         self.assertEqual(100, db.test.count({"z": {"$lte": 0}}))
         self.assertEqual(50, db.test.count({"z": {"$gt": 1}}))
         db.test.update_many({"z": {"$gte": 0}}, {"$inc": {"z": -100}},
@@ -863,10 +865,10 @@ class TestCollection(IntegrationTest):
         db.create_collection("test", validator={"a": {"$gte": 0}})
         ops = [InsertOne({"a": -10}),
                InsertOne({"a": -11}),
-               InsertOne({"a": -12}), # -10, -11, -12
-               UpdateOne({"a": {"$lte": -10}}, {"$inc": {"a": 1}}), # -9, -11, -12
-               UpdateMany({"a": {"$lte": -10}}, {"$inc": {"a": 1}}), # -9, -10, -11
-               ReplaceOne({"a": {"$lte": -10}}, {"a": -1})] # -9, -10, -1
+               InsertOne({"a": -12}),
+               UpdateOne({"a": {"$lte": -10}}, {"$inc": {"a": 1}}),
+               UpdateMany({"a": {"$lte": -10}}, {"$inc": {"a": 1}}),
+               ReplaceOne({"a": {"$lte": -10}}, {"a": -1})]
         db.test.bulk_write(ops, bypass_doc_validation=True)
 
         self.assertEqual(3, db.test.count())
