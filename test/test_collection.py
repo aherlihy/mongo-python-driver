@@ -724,7 +724,7 @@ class TestCollection(IntegrationTest):
         self.assertRaises(OperationFailure, db.test.insert_one,
                           {"_id": 1, "x": 100})
         result = db.test.insert_one({"_id": 1, "x": 100},
-                                    bypass_doc_validation=True)
+                                    bypass_document_validation=True)
         self.assertTrue(isinstance(result, InsertOneResult))
         self.assertEqual(1, result.inserted_id)
         result = db.test.insert_one({"_id":2, "a":0})
@@ -734,7 +734,7 @@ class TestCollection(IntegrationTest):
         # Test insert_many
         docs = [{"_id": i, "x": 100 - i} for i in range(3, 100)]
         self.assertRaises(OperationFailure, db.test.insert_many, docs)
-        result = db.test.insert_many(docs, bypass_doc_validation=True)
+        result = db.test.insert_many(docs, bypass_document_validation=True)
         self.assertTrue(isinstance(result, InsertManyResult))
         self.assertTrue(97, len(result.inserted_ids))
         for doc in docs:
@@ -768,7 +768,7 @@ class TestCollection(IntegrationTest):
         self.assertEqual(0, db.test.count({"y": 1}))
         self.assertEqual(1, db.test.count({"a": 101}))
         db.test.replace_one({"a": 101}, {"y": 1},
-                            bypass_doc_validation=True)
+                            bypass_document_validation=True)
         self.assertEqual(0, db.test.count({"a": 101}))
         self.assertEqual(1, db.test.count({"y": 1}))
         db.test.replace_one({"y": 1}, {"a": 102})
@@ -776,17 +776,17 @@ class TestCollection(IntegrationTest):
         self.assertEqual(0, db.test.count({"a": 101}))
         self.assertEqual(1, db.test.count({"a": 102}))
 
-        db.test.insert_one({"y": 1}, bypass_doc_validation=True)
+        db.test.insert_one({"y": 1}, bypass_document_validation=True)
         self.assertRaises(OperationFailure, db.test.replace_one,
                           {"y": 1}, {"x": 101})
         self.assertEqual(0, db.test.count({"x": 101}))
         self.assertEqual(1, db.test.count({"y": 1}))
         db.test.replace_one({"y": 1}, {"x": 101},
-                            bypass_doc_validation=True)
+                            bypass_document_validation=True)
         self.assertEqual(0, db.test.count({"y": 1}))
         self.assertEqual(1, db.test.count({"x": 101}))
         db.test.replace_one({"x": 101}, {"a": 103},
-                            bypass_doc_validation=False)
+                            bypass_document_validation=False)
         self.assertEqual(0, db.test.count({"x": 101}))
         self.assertEqual(1, db.test.count({"a": 103}))
 
@@ -805,33 +805,33 @@ class TestCollection(IntegrationTest):
         self.assertEqual(0, db.test.count({"z": -5}))
         self.assertEqual(1, db.test.count({"z": 5}))
         db.test.update_one({"z": 5}, {"$inc": {"z": -10}},
-                           bypass_doc_validation=True)
+                           bypass_document_validation=True)
         self.assertEqual(0, db.test.count({"z": 5}))
         self.assertEqual(1, db.test.count({"z": -5}))
         db.test.update_one({"z": -5}, {"$inc": {"z": 6}},
-                           bypass_doc_validation=False)
+                           bypass_document_validation=False)
         self.assertEqual(1, db.test.count({"z": 1}))
         self.assertEqual(0, db.test.count({"z": -5}))
 
         db.test.insert_one({"z": -10},
-                           bypass_doc_validation=True)
+                           bypass_document_validation=True)
         self.assertRaises(OperationFailure, db.test.update_one,
                           {"z": -10}, {"$inc": {"z": 1}})
         self.assertEqual(0, db.test.count({"z": -9}))
         self.assertEqual(1, db.test.count({"z": -10}))
         db.test.update_one({"z": -10}, {"$inc": {"z": 1}},
-                           bypass_doc_validation=True)
+                           bypass_document_validation=True)
         self.assertEqual(1, db.test.count({"z": -9}))
         self.assertEqual(0, db.test.count({"z": -10}))
         db.test.update_one({"z": -9}, {"$inc": {"z": 9}},
-                           bypass_doc_validation=False)
+                           bypass_document_validation=False)
         self.assertEqual(0, db.test.count({"z": -9}))
         self.assertEqual(1, db.test.count({"z": 0}))
 
         # Test update_many
         db.test.insert_many([{"z": i} for i in range(3, 101)])
         db.test.insert_one({"y": 0},
-                           bypass_doc_validation=True)
+                           bypass_document_validation=True)
         self.assertRaises(OperationFailure, db.test.update_many, {},
                           {"$inc": {"z": -100}})
         self.assertEqual(100, db.test.count({"z": {"$gte": 0}}))
@@ -847,7 +847,7 @@ class TestCollection(IntegrationTest):
         self.assertEqual(50, db.test.count({"z": {"$lt": 0}}))
 
         db.test.insert_many([{"z": -i} for i in range(50)],
-                            bypass_doc_validation=True)
+                            bypass_document_validation=True)
         self.assertRaises(OperationFailure, db.test.update_many,
             {}, {"$inc": {"z": 1}})
         self.assertEqual(100, db.test.count({"z": {"$lte": 0}}))
@@ -873,7 +873,7 @@ class TestCollection(IntegrationTest):
                UpdateOne({"a": {"$lte": -10}}, {"$inc": {"a": 1}}),
                UpdateMany({"a": {"$lte": -10}}, {"$inc": {"a": 1}}),
                ReplaceOne({"a": {"$lte": -10}}, {"a": -1})]
-        db.test.bulk_write(ops, bypass_doc_validation=True)
+        db.test.bulk_write(ops, bypass_document_validation=True)
 
         self.assertEqual(3, db.test.count())
         self.assertEqual(1, db.test.count({"a": -11}))
