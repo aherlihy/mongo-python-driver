@@ -139,6 +139,7 @@ class TestBulk(BulkTestBase):
         bulk.find({})
 
     @client_context.require_version_min(3, 1, 9, -1)
+    @client_context.require_no_auth
     def test_bypass_document_validation_bulk_op(self):
 
         # Test insert

@@ -714,6 +714,7 @@ class TestCollection(IntegrationTest):
         wait_until(lambda: 0 == db.test.count(), 'delete 2 documents')
 
     @client_context.require_version_min(3, 1, 9, -1)
+    @client_context.require_no_auth
     def test_insert_bypass_document_validation(self):
         db = self.db
         db.test.drop()
@@ -754,6 +755,7 @@ class TestCollection(IntegrationTest):
         self.assertTrue(result.acknowledged)
 
     @client_context.require_version_min(3, 1, 9, -1)
+    @client_context.require_no_auth
     def test_replace_bypass_document_validation(self):
         db = self.db
         db.test.drop()
@@ -789,6 +791,7 @@ class TestCollection(IntegrationTest):
         self.assertEqual(1, db.test.count({"a": 103}))
 
     @client_context.require_version_min(3, 1, 9, -1)
+    @client_context.require_no_auth
     def test_update_bypass_document_validation(self):
         db = self.db
         db.test.drop()
@@ -859,6 +862,7 @@ class TestCollection(IntegrationTest):
         self.assertEqual(0, db.test.count({"z": {"$lt": 0}}))
 
     @client_context.require_version_min(3, 1, 9, -1)
+    @client_context.require_no_auth
     def test_bypass_document_validation_bulk_write(self):
         db = self.db
         db.test.drop()
