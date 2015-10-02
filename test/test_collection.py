@@ -838,11 +838,11 @@ class TestCollection(IntegrationTest):
         self.assertEqual(0, db.test.count({"z": {"$lt": 0}}))
         self.assertEqual(0, db.test.count({"y": 0, "z": -100}))
         db.test.update_many({"z": {"$gte": 0}}, {"$inc": {"z": -100}},
-                            bypass_doc_validation=True)
+                            bypass_document_validation=True)
         self.assertEqual(0, db.test.count({"z": {"$gt": 0}}))
         self.assertEqual(100, db.test.count({"z": {"$lte": 0}}))
         db.test.update_many({"z": {"$gt": -50}}, {"$inc": {"z": 100}},
-                            bypass_doc_validation=False)
+                            bypass_document_validation=False)
         self.assertEqual(50, db.test.count({"z": {"$gt": 0}}))
         self.assertEqual(50, db.test.count({"z": {"$lt": 0}}))
 
@@ -853,11 +853,11 @@ class TestCollection(IntegrationTest):
         self.assertEqual(100, db.test.count({"z": {"$lte": 0}}))
         self.assertEqual(50, db.test.count({"z": {"$gt": 1}}))
         db.test.update_many({"z": {"$gte": 0}}, {"$inc": {"z": -100}},
-                            bypass_doc_validation=True)
+                            bypass_document_validation=True)
         self.assertEqual(0, db.test.count({"z": {"$gt": 0}}))
         self.assertEqual(150, db.test.count({"z": {"$lte": 0}}))
         db.test.update_many({"z": {"$lte": 0}}, {"$inc": {"z": 100}},
-                            bypass_doc_validation=False)
+                            bypass_document_validation=False)
         self.assertEqual(150, db.test.count({"z": {"$gte": 0}}))
         self.assertEqual(0, db.test.count({"z": {"$lt": 0}}))
 

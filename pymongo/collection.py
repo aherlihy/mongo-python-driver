@@ -476,7 +476,7 @@ class Collection(common.BaseObject):
     def _insert_one(
             self, sock_info, doc, ordered,
             check_keys, manipulate, write_concern, op_id,
-            bypass_doc_val):
+            bypass_doc_val=False):
         """Internal helper for inserting a single document."""
         if manipulate:
             doc = self.__database._apply_incoming_manipulators(doc, self)
@@ -516,7 +516,8 @@ class Collection(common.BaseObject):
         if isinstance(docs, collections.MutableMapping):
             return self._insert_one(
                 sock_info, docs, ordered,
-                check_keys, manipulate, write_concern, op_id, bypass_doc_val)
+                check_keys, manipulate, write_concern, op_id,
+                bypass_doc_val=bypass_doc_val)
 
         ids = []
 
