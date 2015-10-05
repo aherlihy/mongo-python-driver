@@ -1562,9 +1562,6 @@ class Collection(common.BaseObject):
             mongos does not support returning aggregate results using a cursor.
             The default is ``True``. Set this to ``False`` when upgrading a 2.4
             or older sharded cluster to 2.6 or newer (see the warning below).
-          - `bypass_document_validation`: (optional) If ``True``, allows the
-            write to opt-out of document level validation. Default is
-            ``False``.
 
         The :meth:`aggregate` method obeys the :attr:`read_preference` of this
         :class:`Collection`. Please note that using the ``$out`` pipeline stage
@@ -1581,9 +1578,6 @@ class Collection(common.BaseObject):
            use :meth:`~pymongo.database.Database.command` instead. An
            example is included in the :ref:`aggregate-examples` documentation.
 
-        .. note:: `bypass_document_validation` requires server version
-          **>= 3.2**
-
         :Parameters:
           - `pipeline`: a list of aggregation pipeline stages
           - `**kwargs` (optional): See list of options above.
@@ -1592,8 +1586,6 @@ class Collection(common.BaseObject):
           A :class:`~pymongo.command_cursor.CommandCursor` over the result
           set.
 
-        .. versionchanged:: 3.2
-          Added bypass_document_validation support
         .. versionchanged:: 3.0
            The :meth:`aggregate` method always returns a CommandCursor. The
            pipeline argument must be a list.
