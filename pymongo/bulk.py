@@ -574,8 +574,9 @@ class BulkOperationBuilder(object):
             in arbitrary order (possibly in parallel on the server), reporting
             any errors that occurred after attempting all operations. Defaults
             to ``True``.
-          - `bypass_document_validation`: (optional) If true, allows the write
-            to opt-out of document level validation. Default is ``False``.
+          - `bypass_document_validation`: (optional) If ``True``, allows the
+            write to opt-out of document level validation. Default is
+            ``False``.
 
         .. note:: `bypass_document_validation` requires server version
           **>= 3.2**

@@ -314,8 +314,9 @@ class Collection(common.BaseObject):
         possibly in parallel. All operations will be attempted.
 
         :Parameters:
-          - `bypass_document_validation`: (optional) If true, allows the write
-            to opt-out of document level validation. Default is ``False``.
+          - `bypass_document_validation`: (optional) If ``True``, allows the
+            write to opt-out of document level validation. Default is
+            ``False``.
 
         Returns a :class:`~pymongo.bulk.BulkOperationBuilder` instance.
 
@@ -329,9 +330,7 @@ class Collection(common.BaseObject):
 
         .. versionadded:: 2.7
         """
-        return BulkOperationBuilder(
-            self, ordered=False,
-            bypass_document_validation=bypass_document_validation)
+        return BulkOperationBuilder(self, False, bypass_document_validation)
 
     def initialize_ordered_bulk_op(self, bypass_document_validation=False):
         """Initialize an ordered batch of write operations.
@@ -341,8 +340,9 @@ class Collection(common.BaseObject):
         are aborted.
 
         :Parameters:
-          - `bypass_document_validation`: (optional) If true, allows the write
-            to opt-out of document level validation. Default is ``False``.
+          - `bypass_document_validation`: (optional) If ``True``, allows the
+            write to opt-out of document level validation. Default is
+            ``False``.
 
         Returns a :class:`~pymongo.bulk.BulkOperationBuilder` instance.
 
@@ -356,9 +356,7 @@ class Collection(common.BaseObject):
 
         .. versionadded:: 2.7
         """
-        return BulkOperationBuilder(
-            self, ordered=True,
-            bypass_document_validation=bypass_document_validation)
+        return BulkOperationBuilder(self, True, bypass_document_validation)
 
     def bulk_write(self, requests, ordered=True,
                    bypass_document_validation=False):
@@ -405,8 +403,9 @@ class Collection(common.BaseObject):
             occurs all remaining operations are aborted. If ``False`` requests
             will be performed on the server in arbitrary order, possibly in
             parallel, and all operations will be attempted.
-          - `bypass_document_validation`: (optional) If true, allows the write
-            to opt-out of document level validation. Default is ``False``.
+          - `bypass_document_validation`: (optional) If ``True``, allows the
+            write to opt-out of document level validation. Default is
+            ``False``.
 
         :Returns:
           An instance of :class:`~pymongo.results.BulkWriteResult`.
@@ -475,8 +474,7 @@ class Collection(common.BaseObject):
 
     def _insert_one(
             self, sock_info, doc, ordered,
-            check_keys, manipulate, write_concern, op_id,
-            bypass_doc_val=False):
+            check_keys, manipulate, write_concern, op_id, bypass_doc_val):
         """Internal helper for inserting a single document."""
         if manipulate:
             doc = self.__database._apply_incoming_manipulators(doc, self)
@@ -516,8 +514,7 @@ class Collection(common.BaseObject):
         if isinstance(docs, collections.MutableMapping):
             return self._insert_one(
                 sock_info, docs, ordered,
-                check_keys, manipulate, write_concern, op_id,
-                bypass_doc_val=bypass_doc_val)
+                check_keys, manipulate, write_concern, op_id, bypass_doc_val)
 
         ids = []
 
@@ -586,8 +583,9 @@ class Collection(common.BaseObject):
           - `document`: The document to insert. Must be a mutable mapping
             type. If the document does not have an _id field one will be
             added automatically.
-          - `bypass_document_validation`: (optional) If true, allows the write
-            to opt-out of document level validation. Default is False.
+          - `bypass_document_validation`: (optional) If ``True``, allows the
+            write to opt-out of document level validation. Default is
+            ``False``.
 
         :Returns:
           - An instance of :class:`~pymongo.results.InsertOneResult`.
@@ -628,8 +626,9 @@ class Collection(common.BaseObject):
             occurs all remaining inserts are aborted. If ``False``, documents
             will be inserted on the server in arbitrary order, possibly in
             parallel, and all document inserts will be attempted.
-          - `bypass_document_validation`: (optional) If true, allows the write
-            to opt-out of document level validation. Default is ``False``.
+          - `bypass_document_validation`: (optional) If ``True``, allows the
+            write to opt-out of document level validation. Default is
+            ``False``.
 
         :Returns:
           An instance of :class:`~pymongo.results.InsertManyResult`.
@@ -742,8 +741,9 @@ class Collection(common.BaseObject):
           - `replacement`: The new document.
           - `upsert` (optional): If ``True``, perform an insert if no documents
             match the filter.
-          - `bypass_document_validation`: (optional) If true, allows the write
-            to opt-out of document level validation. Default is ``False``.
+          - `bypass_document_validation`: (optional) If ``True``, allows the
+            write to opt-out of document level validation. Default is
+            ``False``.
 
         :Returns:
           - An instance of :class:`~pymongo.results.UpdateResult`.
@@ -790,8 +790,9 @@ class Collection(common.BaseObject):
           - `update`: The modifications to apply.
           - `upsert` (optional): If ``True``, perform an insert if no documents
             match the filter.
-          - `bypass_document_validation`: (optional) If true, allows the write
-            to opt-out of document level validation. Default is ``False``.
+          - `bypass_document_validation`: (optional) If ``True``, allows the
+            write to opt-out of document level validation. Default is
+            ``False``.
 
         :Returns:
           - An instance of :class:`~pymongo.results.UpdateResult`.
@@ -839,8 +840,9 @@ class Collection(common.BaseObject):
           - `update`: The modifications to apply.
           - `upsert` (optional): If ``True``, perform an insert if no documents
             match the filter.
-          - `bypass_document_validation`: (optional) If true, allows the write
-            to opt-out of document level validation. Default is ``False``.
+          - `bypass_document_validation`: (optional) If ``True``, allows the
+            write to opt-out of document level validation. Default is
+            ``False``.
 
         :Returns:
           - An instance of :class:`~pymongo.results.UpdateResult`.
@@ -1560,8 +1562,9 @@ class Collection(common.BaseObject):
             mongos does not support returning aggregate results using a cursor.
             The default is ``True``. Set this to ``False`` when upgrading a 2.4
             or older sharded cluster to 2.6 or newer (see the warning below).
-          - `bypass_document_validation`: (optional) If true, allows the write
-            to opt-out of document level validation. Default is ``False``.
+          - `bypass_document_validation`: (optional) If ``True``, allows the
+            write to opt-out of document level validation. Default is
+            ``False``.
 
         The :meth:`aggregate` method obeys the :attr:`read_preference` of this
         :class:`Collection`. Please note that using the ``$out`` pipeline stage
