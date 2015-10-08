@@ -488,12 +488,12 @@ class TestCollection(IntegrationTest):
         elif "inputStages" in root:
             for i in root['inputStages']:
                 stage = self.get_plan_stage(i, stage)
-                if stage is not {}:
+                if stage:
                     return stage
         elif "shards" in root:
             for i in root['shards']:
                 stage = self.get_plan_stage(i['winningPlan'], stage)
-                if stage is not {}:
+                if stage:
                     return stage
         return {}
 
