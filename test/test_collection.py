@@ -488,12 +488,12 @@ class TestCollection(IntegrationTest):
         elif "inputStages" in root:
             for i in root['inputStages']:
                 stage = self.get_plan_stage(i, stage)
-                if stage is not None:
+                if stage is not {}:
                     return stage
         elif "shards" in root:
             for i in root['shards']:
                 stage = self.get_plan_stage(i['winningPlan'], stage)
-                if stage is not None:
+                if stage is not {}:
                     return stage
         return {}
 
@@ -523,37 +523,37 @@ class TestCollection(IntegrationTest):
         # Operations that use the partial index.
         explain = db.test.find({"x": 6, "a": 1}).explain()
         stage = self.get_plan_stage(explain['queryPlanner']['winningPlan'],
-                                  'IXSCAN')
+                                    'IXSCAN')
         self.assertEqual("x_1", stage.get('indexName'))
         self.assertTrue(stage.get('isPartial'))
 
         explain = db.test.find({"x": {"$gt": 1}, "a": 1}).explain()
         stage = self.get_plan_stage(explain['queryPlanner']['winningPlan'],
-                                  'IXSCAN')
+                                    'IXSCAN')
         self.assertEqual("x_1", stage.get('indexName'))
         self.assertTrue(stage.get('isPartial'))
 
         explain = db.test.find({"x": 6, "a": {"$lte": 1}}).explain()
         stage = self.get_plan_stage(explain['queryPlanner']['winningPlan'],
-                                  'IXSCAN')
+                                    'IXSCAN')
         self.assertEqual("x_1", stage.get('indexName'))
         self.assertTrue(stage.get('isPartial'))
 
         # Operations that do not use the partial index.
         explain = db.test.find({"x": 6, "a": {"$lte": 1.6}}).explain()
         stage = self.get_plan_stage(explain['queryPlanner']['winningPlan'],
-                                  'COLLSCAN')
+                                    'COLLSCAN')
         self.assertNotEqual({}, stage)
         explain = db.test.find({"x": 6}).explain()
         stage = self.get_plan_stage(explain['queryPlanner']['winningPlan'],
-                                  'COLLSCAN')
+                                    'COLLSCAN')
         self.assertNotEqual({}, stage)
 
         # Test drop_indexes.
         db.test.drop_index("x_1")
         explain = db.test.find({"x": 6, "a": 1}).explain()
         stage = self.get_plan_stage(explain['queryPlanner']['winningPlan'],
-                                  'COLLSCAN')
+                                    'COLLSCAN')
         self.assertNotEqual({}, stage)
 
     def test_field_selection(self):
