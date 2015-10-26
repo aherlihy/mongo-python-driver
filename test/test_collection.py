@@ -756,6 +756,10 @@ class TestCollection(IntegrationTest):
         self.assertTrue(isinstance(result, InsertOneResult))
         self.assertEqual(2, result.inserted_id)
 
+        db2 = self.db.client.get_database(self.db.name,
+                                         write_concern=WriteConcern(w=0))
+        self.assertRaises(OperationFailure, db2.test.insert_one, {"x": 1}, bypass_document_validation=True)
+
         # Test insert_many
         docs = [{"_id": i, "x": 100 - i} for i in range(3, 100)]
         self.assertRaises(OperationFailure, db.test.insert_many, docs)
