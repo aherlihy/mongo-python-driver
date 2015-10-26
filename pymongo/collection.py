@@ -558,6 +558,9 @@ class Collection(common.BaseObject):
         if op_id is None:
             op_id = message._randint()
         if bypass_doc_val and sock_info.max_wire_version >= 4:
+            if not self.write_concern.acknowledged:
+                raise OperationFailure("Cannot set bypass_document_validation"
+                                       " with unacknowledged writes")
             command['bypassDocumentValidation'] = True
         bwc = message._BulkWriteContext(
             self.database.name, command, sock_info, op_id,
