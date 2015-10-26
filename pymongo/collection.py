@@ -915,7 +915,7 @@ class Collection(common.BaseObject):
             # Legacy OP_DELETE.
             return self._legacy_write(
                 sock_info, 'delete', command, acknowledged, op_id,
-                message.delete, self.__full_name, False, criteria,
+                message.delete, False, self.__full_name, criteria,
                 acknowledged, concern, self.codec_options, int(not multi))
 
     def delete_one(self, filter):
