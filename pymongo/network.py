@@ -135,12 +135,12 @@ def _receive_data_on_socket(sock, length):
     while length:
         try:
             chunk = sock.recv(length)
-        except (IOError, OSError) as e:
+        except (IOError, OSError) as exc:
             err = None
-            if hasattr(e, 'errno'):
-                err = e.errno
-            elif e.args:
-                err = e.args[0]
+            if hasattr(exc, 'errno'):
+                err = exc.errno
+            elif exc.args:
+                err = exc.args[0]
             if err == errno.EINTR:
                 continue
             raise
