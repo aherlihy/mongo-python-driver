@@ -15,6 +15,7 @@
 """Internal network layer helper methods."""
 
 import datetime
+import errno
 import select
 import struct
 
@@ -127,7 +128,17 @@ def receive_message(sock, operation, request_id):
 def _receive_data_on_socket(sock, length):
     msg = b""
     while length:
-        chunk = sock.recv(length)
+        try:
+            chunk = sock.recv(length)
+        except (IOError, OSError) as e:
+            err = None
+            if hasattr(e, 'errno'):
+                err = e.errno
+            elif e.args:
+                err = e.args[0]
+            if err == errno.EINTR:
+                continue
+            raise
         if chunk == b"":
             raise AutoReconnect("connection closed")
 
