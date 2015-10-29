@@ -208,17 +208,21 @@ class TestClient(IntegrationTest):
         c = rs_or_single_client(connect=False)
         # is_primary causes client to block until connected
         self.assertIsInstance(c.is_primary, bool)
+
+        c = rs_or_single_client(connect=False)
         self.assertIsInstance(c.is_mongos, bool)
+        c = rs_or_single_client(connect=False)
         self.assertIsInstance(c.max_pool_size, int)
         self.assertIsInstance(c.nodes, frozenset)
 
+        c = rs_or_single_client(connect=False)
         self.assertEqual(c.codec_options, CodecOptions())
         self.assertIsInstance(c.max_bson_size, int)
-        self.assertIsInstance(c.max_write_batch_size, int)
+        c = rs_or_single_client(connect=False)
         self.assertFalse(c.primary)
         self.assertFalse(c.secondaries)
-
-        c.pymongo_test.command('ismaster')  # Auto-connect.
+        c = rs_or_single_client(connect=False)
+        self.assertIsInstance(c.max_write_batch_size, int)
 
         if client_context.is_rs:
             # The primary's host and port are from the replica set config.

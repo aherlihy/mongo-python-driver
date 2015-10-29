@@ -483,8 +483,9 @@ class MongoClient(common.BaseObject):
     def _server_property(self, attr_name):
         """An attribute of the current server's description.
 
-        If client is not connected, will block until a connection is
-        established.
+        If the client is not connected, this will block until a connection is
+        established or raise ServerSelectionTimeoutError if no server is
+        available.
 
         Not threadsafe if used multiple times in a single method, since
         the server may change. In such cases, store a local reference to a
@@ -561,18 +562,20 @@ class MongoClient(common.BaseObject):
 
     @property
     def is_primary(self):
-        """If this client if connected to a server that can accept writes.
+        """If this client is connected to a server that can accept writes.
 
         True if the current server is a standalone, mongos, or the primary of
-        a replica set. If client is not connected, will block until a
-        connection is established.
+        a replica set. If the client is not connected, this will block until a
+        connection is established or raise ServerSelectionTimeoutError if no
+        server is available.
         """
         return self._server_property('is_writable')
 
     @property
     def is_mongos(self):
-        """If this client is connected to mongos. If client is not connected,
-        will block until a connection is established.
+        """If this client is connected to mongos. If the client is not
+        connected, this will block until a connection is established or raise
+        ServerSelectionTimeoutError if no server is available..
         """
         return self._server_property('server_type') == SERVER_TYPE.Mongos
 
@@ -605,8 +608,9 @@ class MongoClient(common.BaseObject):
     def max_bson_size(self):
         """The largest BSON object the connected server accepts in bytes.
 
-        If client is not connected, will block until a connection is
-        established.
+        If the client is not connected, this will block until a connection is
+        established or raise ServerSelectionTimeoutError if no server is
+        available.
         """
         return self._server_property('max_bson_size')
 
@@ -614,8 +618,9 @@ class MongoClient(common.BaseObject):
     def max_message_size(self):
         """The largest message the connected server accepts in bytes.
 
-        If client is not connected, will block until a connection is
-        established.
+        If the client is not connected, this will block until a connection is
+        established or raise ServerSelectionTimeoutError if no server is
+        available.
         """
         return self._server_property('max_message_size')
 
@@ -623,8 +628,9 @@ class MongoClient(common.BaseObject):
     def max_write_batch_size(self):
         """The maxWriteBatchSize reported by the server.
 
-        If client is not connected, will block until a connection is
-        established.
+        If the client is not connected, this will block until a connection is
+        established or raise ServerSelectionTimeoutError if no server is
+        available.
 
         Returns a default value when connected to server versions prior to
         MongoDB 2.6.
