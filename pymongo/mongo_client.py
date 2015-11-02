@@ -512,15 +512,21 @@ class MongoClient(common.BaseObject):
         the client is load-balancing among mongoses, since there is no single
         address. Use :attr:`nodes` instead.
 
+        If the client is not connected, this will block until a connection is
+        established or raise ServerSelectionTimeoutError if no server is
+        available.
+
         .. versionadded:: 3.0
         """
-        try:
-            return self._topology.get_direct_or_primary()
-        except InvalidOperation:
-            # Only one case where Topology throws InvalidOperation.
+        topology_type = self._topology._description.topology_type
+        if topology_type == TOPOLOGY_TYPE.Sharded:
             raise InvalidOperation(
                 'Cannot use "address" property when load balancing among'
                 ' mongoses, use "nodes" instead.')
+        if topology_type not in (TOPOLOGY_TYPE.ReplicaSetWithPrimary,
+                                 TOPOLOGY_TYPE.Single):
+            return None
+        return self._server_property('address')
 
     @property
     def primary(self):

@@ -1,11 +1,10 @@
 Changelog
 =========
 
-Changes is Version 3.2
+Changes in Version 3.2
 ----------------------
 
-Version 3.1 implements a few new features and fixes bugs reported since the release
-of 3.0.3.
+Version 3.2 implements the new server features introduced in MongoDB 3.2.
 
 Highlights include:
 
