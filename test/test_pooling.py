@@ -30,8 +30,9 @@ from pymongo.errors import (AutoReconnect,
 sys.path[0:0] = [""]
 
 from pymongo.network import socket_closed
+from pymongo.monitor import Monitor
 from pymongo.pool import Pool, PoolOptions
-from test import host, port, SkipTest, unittest, client_context
+from test import host, port, SkipTest, unittest, client_context, client_knobs
 from test.utils import (get_pool,
                         joinall,
                         delay,
@@ -196,6 +197,20 @@ class TestPooling(_TestPoolingBase):
             self.assertEqual(sock_info, new_sock_info)
 
         self.assertEqual(1, len(cx_pool.sockets))
+
+    def test_max_idle_time_ms(self):
+        with client_knobs(heartbeat_frequency=1):
+            cx_pool = self.create_pool(max_pool_size=10, max_idle_time_ms=1)
+            monitor = Monitor(self.c._topology.description.server_descriptions().values()[0], self.c._topology, cx_pool, self.c._topology_settings)
+            monitor.open()
+            # cx_pool._check_interval_seconds = 0  # Always check.
+            with cx_pool.get_socket({}) as sock_info:
+                pass
+            time.sleep(2)  # wait 2 seconds so we know sock is idle
+            with cx_pool.get_socket({}) as new_sock_info:
+                self.assertNotEqual(sock_info, new_sock_info)
+
+            self.assertEqual(1, len(cx_pool.sockets))
 
     def test_get_socket_and_exception(self):
         # get_socket() returns socket after a non-network error.
