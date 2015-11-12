@@ -66,18 +66,20 @@ def _raise_connection_failure(address, error):
 
 class PoolOptions(object):
 
-    __slots__ = ('__max_pool_size', '__connect_timeout', '__socket_timeout',
+    __slots__ = ('__max_pool_size', '__min_pool_size', '__max_idle_time_ms', '__connect_timeout', '__socket_timeout',
                  '__wait_queue_timeout', '__wait_queue_multiple',
                  '__ssl_context', '__ssl_match_hostname', '__socket_keepalive',
                  '__event_listeners')
 
-    def __init__(self, max_pool_size=100, connect_timeout=None,
+    def __init__(self, max_pool_size=100, min_pool_size=0, max_idle_time_ms=None, connect_timeout=None,
                  socket_timeout=None, wait_queue_timeout=None,
                  wait_queue_multiple=None, ssl_context=None,
                  ssl_match_hostname=True, socket_keepalive=False,
                  event_listeners=None):
 
         self.__max_pool_size = max_pool_size
+        self.__min_pool_size = min_pool_size
+        self.__max_idle_time_ms = max_idle_time_ms
         self.__connect_timeout = connect_timeout
         self.__socket_timeout = socket_timeout
         self.__wait_queue_timeout = wait_queue_timeout
@@ -94,6 +96,20 @@ class PoolOptions(object):
         are `max_pool_size` outstanding connections.
         """
         return self.__max_pool_size
+
+    @property
+    def min_pool_size(self):
+        """The minimum number of connections that the pool will open
+        simultaneously. Default is 0.
+        """
+        return self.__min_pool_size
+
+    @property
+    def max_idle_time_ms(self):
+        """The maximum number of milliseconds that a connection can remain
+        idle in the pool before being removed and closed.
+        """
+        return self.__max_idle_time_ms
 
     @property
     def connect_timeout(self):
@@ -581,6 +597,7 @@ class Pool:
 
     def return_socket(self, sock_info):
         """Return the socket to the pool, or if it's closed discard it."""
+        #TODO: is this the only place where sockets are removed from the pool?
         if self.pid != os.getpid():
             self.reset()
         else:

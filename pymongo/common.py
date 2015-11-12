@@ -64,6 +64,12 @@ CONNECT_TIMEOUT = 20.0
 # Default value for maxPoolSize.
 MAX_POOL_SIZE = 100
 
+# Default value for minPoolSize.
+MIN_POOL_SIZE = 100
+
+# Default value for maxIdleTimeMS.
+MAX_IDLE_TIME_MS = 100
+
 # Default value for localThresholdMS.
 LOCAL_THRESHOLD_MS = 15
 

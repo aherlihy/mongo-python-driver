@@ -128,6 +128,11 @@ class MongoClient(common.BaseObject):
             that the pool will open simultaneously. If this is set, operations
             will block if there are `maxPoolSize` outstanding connections
             from the pool. Defaults to 100. Cannot be 0.
+          - `minPoolSize` (optional): The minimum number of connections
+            that the pool will open simultaneously. Default is 0.
+          - `maxIdleTimeMS` (optional): The maximum number of milliseconds that
+             a connection can remain idle in the pool before being removed and
+             closed.
           - `socketTimeoutMS`: (integer or None) Controls how long (in
             milliseconds) the driver will wait for a response after sending an
             ordinary (non-monitoring) database operation before concluding that
@@ -595,6 +600,21 @@ class MongoClient(common.BaseObject):
         after a timeout. By default ``waitQueueTimeoutMS`` is not set.
         """
         return self.__options.pool_options.max_pool_size
+
+    @property
+    def min_pool_size(self):
+        """The minimum number of sockets the pool will open concurrently.
+
+        Default is 0.
+        """
+        return self.__options.pool_options.min_pool_size
+
+    @property
+    def max_idle_time_ms(self):
+        """The maximum number of milliseconds that a connection can remain idle
+        in the pool before being removed and closed.
+        """
+        return self.__options.pool_options.max_idle_time_ms
 
     @property
     def nodes(self):
