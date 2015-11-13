@@ -253,6 +253,19 @@ class Topology(object):
             self._reset_server(address)
             self._request_check(address)
 
+    def clean_up_stale_sockets(self):
+        with self._lock:
+            # How long since socket was last checked out.
+            for server in self._servers.values():
+                for sock_info in server._pool.sockets:
+                    if server._pool.opts.max_idle_time_ms is not None:
+                        age = _time() - sock_info.last_checkout
+                        if age > server._pool.opts.max_idle_time_ms and len(server._pool.sockets) > server._pool.opts.min_pool_size:
+                            server._pool.sockets.remove(sock_info)
+                            sock_info.close()
+                            break
+                            #TODO: remove 1st idle socket and if removal means < min_pool_size, add another.
+
     def close(self):
         """Clear pools and terminate monitors. Topology reopens on demand."""
         with self._lock:

@@ -99,16 +99,6 @@ class Monitor(object):
             # Topology was garbage-collected.
             self.close()
 
-        # How long since socket was last checked out.
-        for sock_info in self._pool.sockets.copy():
-            if self._pool.opts.max_idle_time_ms is not None:
-                age = _time() - sock_info.last_checkout
-                if age > self._pool.opts.max_idle_time_ms and len(self._pool.sockets) > self._pool.opts.min_pool_size:
-                    self._pool.sockets.remove(sock_info)
-                    sock_info.close()
-                    break
-                    #TODO: remove 1st idle socket and if removal means < min_pool_size, add another.
-
     def _check_with_retry(self):
         """Call ismaster once or twice. Reset server's pool on error.
 

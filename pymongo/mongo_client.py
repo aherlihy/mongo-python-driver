@@ -399,7 +399,7 @@ class MongoClient(common.BaseObject):
         # We strongly reference the executor and it weakly references us via
         # this closure. When the client is freed, stop the executor soon.
         self_ref = weakref.ref(self, executor.close)
-        self._kill_cursors_executor = executor
+        self._kill_cursors_executor = executor # TODO: have logic for removing sockets in topology so that it can take the lock; have periodic executor for killcursors call cleanup() on topology ever n seconds
         executor.open()
 
     def _cache_credentials(self, source, credentials, connect=False):
@@ -1030,6 +1030,7 @@ class MongoClient(common.BaseObject):
                 except ConnectionFailure as exc:
                     warnings.warn("couldn't close cursor on %s: %s"
                                   % (address, exc))
+        self._topology.clean_up_stale_sockets()
 
     def server_info(self):
         """Get information about the MongoDB server we're connected to."""
