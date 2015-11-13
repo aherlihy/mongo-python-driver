@@ -113,18 +113,6 @@ class DSTAwareTimezone(datetime.tzinfo):
 
 
 class TestBSON(unittest.TestCase):
-
-    def test_invalid_iterator(self):
-        class C(dict):
-            def __iter__(self):
-                return self
-            # def __next__(self):
-            #     raise RuntimeError('test')
-            def next(self):
-                raise RuntimeError('test')
-        iter = C()
-        self.assertRaises(RuntimeError, bson.BSON.encode, iter)
-
     def assertInvalid(self, data):
         self.assertRaises(InvalidBSON, bson.BSON(data).decode)
 
