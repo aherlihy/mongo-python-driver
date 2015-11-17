@@ -499,6 +499,18 @@ class Pool:
         for sock_info in sockets:
             sock_info.close()
 
+    def remove_stale_sockets(self):
+        with self.lock:
+            if self.opts.max_idle_time_ms is not None:
+                for sock_info in self.sockets.copy(): # Can iterate through copy because pool is locked
+                    age = _time() - sock_info.last_checkout
+                    if age > self.opts.max_idle_time_ms:
+                        self.sockets.remove(sock_info)
+                        sock_info.close()
+                while len(self.sockets) < self.opts.min_pool_size:
+                    sock_info = self.connect()
+                    self.sockets.add(sock_info)
+
     def connect(self):
         """Connect to Mongo and return a new SocketInfo.
 

@@ -65,7 +65,7 @@ CONNECT_TIMEOUT = 20.0
 MAX_POOL_SIZE = 100
 
 # Default value for minPoolSize.
-MIN_POOL_SIZE = 100
+MIN_POOL_SIZE = 0
 
 # Default value for maxIdleTimeMS.
 MAX_IDLE_TIME_MS = 100
@@ -446,7 +446,9 @@ VALIDATORS = {
     'tz_aware': validate_boolean_or_string,
     'uuidrepresentation': validate_uuid_representation,
     'connect': validate_boolean,
-    'event_listeners': _validate_event_listeners
+    'event_listeners': _validate_event_listeners,
+    'maxidletimems': validate_positive_float_or_zero,
+    'minpoolsize': validate_non_negative_integer
 }
 
 

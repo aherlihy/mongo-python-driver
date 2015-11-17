@@ -1030,7 +1030,7 @@ class MongoClient(common.BaseObject):
                 except ConnectionFailure as exc:
                     warnings.warn("couldn't close cursor on %s: %s"
                                   % (address, exc))
-        self._topology.clean_up_stale_sockets()
+        self._topology.update_pool()
 
     def server_info(self):
         """Get information about the MongoDB server we're connected to."""

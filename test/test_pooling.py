@@ -198,35 +198,6 @@ class TestPooling(_TestPoolingBase):
 
         self.assertEqual(1, len(cx_pool.sockets))
 
-    def test_max_idle_time_ms(self):
-        with client_knobs(heartbeat_frequency=.5):
-            # test monitor will kill idle socket
-            cx_pool = self.create_pool(max_idle_time_ms=.5)
-            server_description = self.c._topology.description.server_descriptions().values()[0]
-            monitor = Monitor(server_description, self.c._topology, cx_pool,
-                              self.c._topology_settings)
-            monitor.open()
-            with cx_pool.get_socket({}) as sock_info:
-                pass
-            time.sleep(1)  # wait 2 heartbeats so we know sock is idle
-            with cx_pool.get_socket({}) as new_sock_info:
-                self.assertNotEqual(sock_info, new_sock_info)
-            self.assertEqual(1, len(cx_pool.sockets))
-            monitor.close()
-
-            # test monitor will not kill idle socket if max_idle_time_ms unset
-            cx_pool = self.create_pool(max_pool_size=1)
-            monitor = Monitor(server_description, self.c._topology, cx_pool,
-                              self.c._topology_settings)
-            monitor.open()
-            with cx_pool.get_socket({}) as sock_info:
-                pass
-            time.sleep(1)  # wait 2 heartbeats so we know sock is idle
-            with cx_pool.get_socket({}) as new_sock_info:
-                self.assertEqual(sock_info, new_sock_info)
-            self.assertEqual(1, len(cx_pool.sockets))
-            monitor.close()
-
     def test_get_socket_and_exception(self):
         # get_socket() returns socket after a non-network error.
         cx_pool = self.create_pool(max_pool_size=1, wait_queue_timeout=1)

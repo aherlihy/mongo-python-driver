@@ -187,6 +187,52 @@ class ClientUnitTest(unittest.TestCase):
 
 class TestClient(IntegrationTest):
 
+    def test_max_idle_time_ms(self):
+        with client_knobs(kill_cursor_frequency=.25):
+            client = MongoClient(host, port, maxIdleTimeMS=.5)
+            server = client._get_topology().select_server(any_server_selector)
+
+            with server._pool.get_socket({}) as sock_info:
+                pass
+
+            time.sleep(1)  # wait 4 heartbeats so we know sock is idle
+
+            with server._pool.get_socket({}) as new_sock_info:
+                self.assertNotEqual(sock_info, new_sock_info)
+            self.assertEqual(1, len(server._pool.sockets))
+
+            # test that kill_cursor thread will not kill idle socket if max_idle_time_ms unset
+            client = MongoClient(host, port)
+            server = client._get_topology().select_server(any_server_selector)
+            with server._pool.get_socket({}) as sock_info:
+                pass
+            time.sleep(1)  # wait 2 heartbeats so we know sock is idle
+            with server._pool.get_socket({}) as new_sock_info:
+                self.assertEqual(sock_info, new_sock_info)
+            self.assertEqual(1, len(server._pool.sockets))
+
+    def test_min_pool_size(self):
+        with client_knobs(kill_cursor_frequency=.25):
+            client = MongoClient(host, port)
+            server = client._get_topology().select_server(any_server_selector)
+            time.sleep(1)
+            self.assertEqual(0, len(server._pool.sockets))
+
+            # Assert that pool started up at minPoolSize
+            client = MongoClient(host, port, minPoolSize=10)
+            server = client._get_topology().select_server(any_server_selector)
+            time.sleep(1)
+            self.assertEqual(10, len(server._pool.sockets))
+
+            # Assert that if a socket is closed, a new one takes its place
+            with server._pool.get_socket({}, True) as sock_info:
+                sock_info.close()
+                time.sleep(1)
+                self.assertEqual(10, len(server._pool.sockets))
+                self.assertFalse(sock_info in server._pool.sockets)
+
+
+
     def test_constants(self):
         # Set bad defaults.
         MongoClient.HOST = "somedomainthatdoesntexist.org"
