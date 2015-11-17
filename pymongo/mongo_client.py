@@ -131,8 +131,8 @@ class MongoClient(common.BaseObject):
           - `minPoolSize` (optional): The minimum number of connections
             that the pool will open simultaneously. Default is 0.
           - `maxIdleTimeMS` (optional): The maximum number of milliseconds that
-             a connection can remain idle in the pool before being removed and
-             closed.
+            a connection can remain idle in the pool before being removed and
+            closed.
           - `socketTimeoutMS`: (integer or None) Controls how long (in
             milliseconds) the driver will wait for a response after sending an
             ordinary (non-monitoring) database operation before concluding that
@@ -399,7 +399,7 @@ class MongoClient(common.BaseObject):
         # We strongly reference the executor and it weakly references us via
         # this closure. When the client is freed, stop the executor soon.
         self_ref = weakref.ref(self, executor.close)
-        self._kill_cursors_executor = executor # TODO: have logic for removing sockets in topology so that it can take the lock; have periodic executor for killcursors call cleanup() on topology ever n seconds
+        self._kill_cursors_executor = executor
         executor.open()
 
     def _cache_credentials(self, source, credentials, connect=False):

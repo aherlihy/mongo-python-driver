@@ -609,7 +609,6 @@ class Pool:
 
     def return_socket(self, sock_info):
         """Return the socket to the pool, or if it's closed discard it."""
-        #TODO: is this the only place where sockets are removed from the pool?
         if self.pid != os.getpid():
             self.reset()
         else:

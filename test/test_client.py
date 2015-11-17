@@ -201,7 +201,6 @@ class TestClient(IntegrationTest):
                 self.assertNotEqual(sock_info, new_sock_info)
             self.assertEqual(1, len(server._pool.sockets))
 
-            # test that kill_cursor thread will not kill idle socket if max_idle_time_ms unset
             client = MongoClient(host, port)
             server = client._get_topology().select_server(any_server_selector)
             with server._pool.get_socket({}) as sock_info:

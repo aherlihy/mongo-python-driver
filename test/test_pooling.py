@@ -30,9 +30,8 @@ from pymongo.errors import (AutoReconnect,
 sys.path[0:0] = [""]
 
 from pymongo.network import socket_closed
-from pymongo.monitor import Monitor
 from pymongo.pool import Pool, PoolOptions
-from test import host, port, SkipTest, unittest, client_context, client_knobs
+from test import host, port, SkipTest, unittest, client_context
 from test.utils import (get_pool,
                         joinall,
                         delay,

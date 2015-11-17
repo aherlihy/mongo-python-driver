@@ -55,7 +55,6 @@ class MockPool(object):
     def __init__(self, *args, **kwargs):
         self.pool_id = 0
         self._lock = threading.Lock()
-        self.sockets = set()
 
     def get_socket(self, all_credentials):
         return MockSocketInfo()
