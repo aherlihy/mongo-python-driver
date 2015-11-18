@@ -592,7 +592,7 @@ class Pool:
                 # http://bugs.jython.org/issue1854
                 with self.lock:
                     sock_info, from_pool = self.sockets.pop(), True
-                    # Check that socket isn't idle, if it is then open a new one.
+                    # If socket is idle, open a new one.
                     if self.opts.max_idle_time_ms is not None:
                         age = _time() - sock_info.last_checkout
                         if age > self.opts.max_idle_time_ms:
