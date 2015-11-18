@@ -68,7 +68,7 @@ MAX_POOL_SIZE = 100
 MIN_POOL_SIZE = 0
 
 # Default value for maxIdleTimeMS.
-MAX_IDLE_TIME_MS = 100
+MAX_IDLE_TIME_MS = None
 
 # Default value for localThresholdMS.
 LOCAL_THRESHOLD_MS = 15

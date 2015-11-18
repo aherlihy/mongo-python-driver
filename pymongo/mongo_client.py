@@ -346,6 +346,10 @@ class MongoClient(common.BaseObject):
         keyword_opts = dict(common.validate(k, v)
                             for k, v in keyword_opts.items())
         opts.update(keyword_opts)
+        if 'maxPoolSize' in keyword_opts:
+            if keyword_opts.get('minPoolSize') > keyword_opts['maxPoolSize']:
+                raise ValueError("minPoolSize must be smaller than "
+                                 "maxPoolSize")
         self.__options = options = ClientOptions(
             username, password, dbase, opts)
 
@@ -1030,8 +1034,10 @@ class MongoClient(common.BaseObject):
                 except ConnectionFailure as exc:
                     warnings.warn("couldn't close cursor on %s: %s"
                                   % (address, exc))
-        self._topology.update_pool()
-
+        try:
+            self._topology.update_pool()
+        except Exception:
+            warnings.warn("could not create new sockets for minPoolSize")
     def server_info(self):
         """Get information about the MongoDB server we're connected to."""
         return self.admin.command("buildinfo",
