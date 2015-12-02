@@ -15,7 +15,7 @@ def rand_key():
 def rand_int32():
     return random.randint(-100, 100)
 def rand_int64():
-    return {'$numberLong': random.randint(sys.maxint, 2*sys.maxint)}
+    return {'$numberLong': random.randint(0, sys.maxint)}
 def rand_double():
     return random.random() * sys.maxint - 1
 def rand_bool():
@@ -95,8 +95,8 @@ def full_bson():
                 fle.write(']')
 
 
-# flat_bson()
-# print "done with flat_bson"
+flat_bson()
+print "done with flat_bson"
 deep_bson()
 print "done with deep_bson"
 full_bson()
