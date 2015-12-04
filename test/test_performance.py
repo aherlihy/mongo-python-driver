@@ -246,8 +246,8 @@ class GridFsUpload(PerformanceTest, unittest.TestCase):
         self.client.drop_database('perftest')
 
     def before(self):
-        self.client.perftest.drop_collection('fs_files')
-        self.client.perftest.drop_collection('fs_chunks')
+        self.client.perftest.drop_collection('fs.files')
+        self.client.perftest.drop_collection('fs.chunks')
         self.bucket = GridFSBucket(self.client.perftest)
 
     def do_task(self):
@@ -277,6 +277,108 @@ class GridFsDownload(PerformanceTest, unittest.TestCase):
     def do_task(self):
         for _ in range(100):
             self.bucket.open_download_stream(self.uploaded_id).read()
+
+
+class JSONMultiImport(PerformanceTest, unittest.TestCase):
+    def setUp(self):
+        self.client = client_context.rs_or_standalone_client
+        self.client.drop_database('perftest')
+
+    def before(self):
+        self.corpus = self.client.perftest.corpus
+        self.client.perftest.drop_collection('corpus')
+        # TODO: set up threads for loading data and inserting into DB
+
+    def do_task(self):
+        # TODO: load data from disk (100 files) and do unordered insert of 1M docs
+        pass
+
+    def tearDown(self):
+        super(JSONMultiImport, self).tearDown()
+        self.client.drop_database('perftest')
+
+
+class JSONMultiExport(PerformanceTest, unittest.TestCase):
+    def setUp(self):
+        self.client = client_context.rs_or_standalone_client
+        self.client.drop_database('perftest')
+        self.num_docs = 10000
+
+    def before(self):
+        self.corpus = self.client.perftest.corpus
+        self.client.perftest.drop_collection('corpus')
+
+        self.documents = [0 for _ in range(self.num_docs)]
+        for j in range(1, 101):
+            with open(os.path.join(TEST_PATH, os.path.join(
+                    'heavyweight', 'LDJSON%03d.txt' % j))) as f:
+                for i in range(self.num_docs):
+                    self.documents[i] = json.loads(f.readline())
+
+            self.corpus.insert_many(self.documents)
+        # TODO: any point in optimizing this?
+
+    def do_task(self):
+        # TODO: dump all 1M docs into 100 files of 10k docs each.
+        pass
+
+    def tearDown(self):
+        super(JSONMultiExport, self).tearDown()
+        self.client.drop_database('perftest')
+
+
+class GridFsMultiFileUpload(PerformanceTest, unittest.TestCase):
+    def setUp(self):
+        self.client = client_context.rs_or_standalone_client
+        self.client.drop_database('perftest')
+
+    def before(self):
+        self.client.perftest.drop_collection('fs.files')
+        self.client.perftest.drop_collection('fs.chunks')
+
+        self.bucket = GridFSBucket(self.client.perftest)
+
+    def do_task(self):
+        # TODO: upload all 100 files, reading from disk
+        pass
+
+    def tearDown(self):
+        super(GridFsMultiFileUpload, self).tearDown()
+        self.client.drop_database('perftest')
+
+
+class GridFsMultiFileDownload(PerformanceTest, unittest.TestCase):
+    def setUp(self):
+        self.client = client_context.rs_or_standalone_client
+        self.client.drop_database('perftest')
+
+        self.directory = 'GridFsTemp'
+        if not os.path.exists(self.directory):
+            os.makedirs(self.directory)
+
+        for i in range(100):
+            GridFSBucket(self.client.perftest).upload_from_stream(
+                "gridfstest%s" % i, os.path.join(
+                    TEST_PATH, os.path.join('grifs', 'file%s.txt' % i)))
+
+    def before(self):
+        self.client.perftest.drop_collection('fs.files')
+        self.client.perftest.drop_collection('fs.chunks')
+
+        self.bucket = GridFSBucket(self.client.perftest)
+
+    def do_task(self):
+        # TODO: download files, saving each file in temp dir.
+        pass
+
+    def tearDown(self):
+        super(GridFsMultiFileDownload, self).tearDown()
+        self.client.drop_database('perftest')
+
+
+
+
+
 
 
 
