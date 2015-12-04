@@ -15,7 +15,9 @@
 """Tests for the performance spec."""
 
 import json
+import multiprocessing as mp
 import os
+import shutil
 import sys
 import warnings
 
@@ -24,11 +26,12 @@ sys.path[0:0] = [""]
 from bson.json_util import loads
 from bson import BSON, CodecOptions
 from gridfs import GridFSBucket
+from pymongo import MongoClient
 from pymongo.monotonic import time
 from pymongo.operations import InsertOne
-from test import client_context, unittest
+from test import client_context, host, port, unittest
 
-NUM_ITERATIONS = 2
+NUM_ITERATIONS = 1
 MAX_ITERATION_TIME = 100
 
 TEST_PATH = os.path.join(
@@ -59,9 +62,12 @@ class PerformanceTest(object):
         pass
 
     def percentile(self, percentile):
-        sorted_results = sorted(self.results[:self.max_iterations])
-        percentile_index = int(self.max_iterations * percentile / 100) - 1
-        return sorted_results[percentile_index]
+        if hasattr(self, 'results'):
+            sorted_results = sorted(self.results[:self.max_iterations])
+            percentile_index = int(self.max_iterations * percentile / 100) - 1
+            return sorted_results[percentile_index]
+        else:
+            self.assertTrue(False, 'Test execution failed')
 
     def runTest(self):
         results = [0 for _ in range(NUM_ITERATIONS)]
@@ -75,7 +81,7 @@ class PerformanceTest(object):
             results[i] = t.interval
             if time() - start > MAX_ITERATION_TIME:
                 self.max_iterations = i
-                warnings.warn("Test timed out, completed %s iterations." % (self.max_iterations))
+                warnings.warn(Warning("Test timed out, completed %s iterations." % (self.max_iterations + 1)))
                 break
 
         self.results = results
@@ -116,7 +122,7 @@ class LightAndMiddleweight(PerformanceTest):
         # Location of test data.
         self.documents = [0 for _ in range(self.num_docs)]
         with open(os.path.join(
-                TEST_PATH, os.path.join('lightweight', self.dataset))) as f:
+                TEST_PATH, os.path.join('lightweight', self.dataset)), 'r') as f:
             # Since read only first 10k for Twitter dataset
             for i in range(self.num_docs):
                 self.documents[i] = json.loads(f.readline())
@@ -235,7 +241,7 @@ class GridFsUpload(PerformanceTest, unittest.TestCase):
     def setUp(self):
         # Location of test data.
         with open(os.path.join(
-                TEST_PATH, os.path.join('gridfs', 'file0.txt'))) as f:
+                TEST_PATH, os.path.join('gridfs', 'file0.txt')), 'r') as f:
             self.documents = f.read()
 
         self.client = client_context.rs_or_standalone_client
@@ -279,6 +285,30 @@ class GridFsDownload(PerformanceTest, unittest.TestCase):
             self.bucket.open_download_stream(self.uploaded_id).read()
 
 
+def import_json_file(i):
+    documents = [0 for _ in range(10000)]
+    with open(os.path.join( TEST_PATH, os.path.join(
+            'heavyweight', 'LDJSON%03d.txt' % i)), 'r') as f:
+        for j in range(10000):
+            documents[j] = json.loads(f.readline())
+
+    client = MongoClient(host, port)
+    client.perftest.corpus.insert_many(documents)
+
+
+def import_json_file_with_file_id(i):
+    documents = [0 for _ in range(10000)]
+    with open(os.path.join( TEST_PATH, os.path.join(
+            'heavyweight', 'LDJSON%03d.txt' % i)), 'r') as f:
+        for j in range(10000):
+            doc = json.loads(f.readline())
+            doc['file'] = i
+            documents[j] = doc
+
+    client = MongoClient(host, port)
+    client.perftest.corpus.insert_many(documents)
+
+
 class JSONMultiImport(PerformanceTest, unittest.TestCase):
     def setUp(self):
         self.client = client_context.rs_or_standalone_client
@@ -287,44 +317,63 @@ class JSONMultiImport(PerformanceTest, unittest.TestCase):
     def before(self):
         self.corpus = self.client.perftest.corpus
         self.client.perftest.drop_collection('corpus')
-        # TODO: set up threads for loading data and inserting into DB
 
     def do_task(self):
-        # TODO: load data from disk (100 files) and do unordered insert of 1M docs
-        pass
+        pool = mp.Pool(mp.cpu_count())
+        pool.map(import_json_file, range(1, 101))
+        pool.close()
+        pool.join()
 
     def tearDown(self):
         super(JSONMultiImport, self).tearDown()
         self.client.drop_database('perftest')
 
 
+def export_json_file(i):
+    client = MongoClient(host, port)
+    with open(os.path.join(TEST_PATH, os.path.join(
+            'json_temp', 'LDJSON%03d' % i)), 'w') as f:
+        for doc in client.perftest.corpus.find({"file": i}):
+            f.write(str(doc) + '\n')
+
+
 class JSONMultiExport(PerformanceTest, unittest.TestCase):
     def setUp(self):
         self.client = client_context.rs_or_standalone_client
         self.client.drop_database('perftest')
-        self.num_docs = 10000
+        self.client.perfest.corpus.create_index('file')
+
+        pool = mp.Pool(mp.cpu_count())
+        pool.map(import_json_file_with_file_id, range(1, 101))
+        pool.close()
+        pool.join()
 
     def before(self):
-        self.corpus = self.client.perftest.corpus
-        self.client.perftest.drop_collection('corpus')
-
-        self.documents = [0 for _ in range(self.num_docs)]
-        for j in range(1, 101):
-            with open(os.path.join(TEST_PATH, os.path.join(
-                    'heavyweight', 'LDJSON%03d.txt' % j))) as f:
-                for i in range(self.num_docs):
-                    self.documents[i] = json.loads(f.readline())
-
-            self.corpus.insert_many(self.documents)
-        # TODO: any point in optimizing this?
+        self.directory = os.path.join(TEST_PATH, os.path.join('json_temp'))
+        if os.path.exists(self.directory):
+            shutil.rmtree(self.directory)
+        os.makedirs(self.directory)
 
     def do_task(self):
-        # TODO: dump all 1M docs into 100 files of 10k docs each.
-        pass
+        pool = mp.Pool(mp.cpu_count())
+        pool.map(export_json_file, range(1, 101))
+        pool.close()
+        pool.join()
+
+    def after(self):
+        shutil.rmtree(self.directory)
 
     def tearDown(self):
         super(JSONMultiExport, self).tearDown()
         self.client.drop_database('perftest')
+
+def import_gridfs_file(i):
+    client = MongoClient(host, port)
+    bucket = GridFSBucket(client.perftest)
+
+    filename = 'file%s.txt' % i
+    bucket.upload_from_stream(filename, os.path.join(
+        TEST_PATH, os.path.join('gridfs', filename)))
 
 
 class GridFsMultiFileUpload(PerformanceTest, unittest.TestCase):
@@ -339,12 +388,24 @@ class GridFsMultiFileUpload(PerformanceTest, unittest.TestCase):
         self.bucket = GridFSBucket(self.client.perftest)
 
     def do_task(self):
-        # TODO: upload all 100 files, reading from disk
-        pass
+        pool = mp.Pool(mp.cpu_count())
+        pool.map(import_gridfs_file, range(100))
+        pool.close()
+        pool.join()
 
     def tearDown(self):
         super(GridFsMultiFileUpload, self).tearDown()
         self.client.drop_database('perftest')
+
+def export_gridfs_file(i):
+    client = MongoClient(host, port)
+    bucket = GridFSBucket(client.perftest)
+
+    filename = 'file%s.txt' % i
+    file = open(os.path.join(TEST_PATH, os.path.join('gridfs_temp', filename)), 'w')
+    bucket.download_to_stream_by_name(
+        filename,
+        file)
 
 
 class GridFsMultiFileDownload(PerformanceTest, unittest.TestCase):
@@ -352,28 +413,30 @@ class GridFsMultiFileDownload(PerformanceTest, unittest.TestCase):
         self.client = client_context.rs_or_standalone_client
         self.client.drop_database('perftest')
 
-        self.directory = 'GridFsTemp'
-        if not os.path.exists(self.directory):
-            os.makedirs(self.directory)
+        self.directory = os.path.join(TEST_PATH, os.path.join('gridfs_temp'))
+        if os.path.exists(self.directory):
+            shutil.rmtree(self.directory)
+        os.makedirs(self.directory)
 
-        for i in range(100):
-            GridFSBucket(self.client.perftest).upload_from_stream(
-                "gridfstest%s" % i, os.path.join(
-                    TEST_PATH, os.path.join('grifs', 'file%s.txt' % i)))
-
-    def before(self):
-        self.client.perftest.drop_collection('fs.files')
-        self.client.perftest.drop_collection('fs.chunks')
-
-        self.bucket = GridFSBucket(self.client.perftest)
+        bucket = GridFSBucket(self.client.perftest)
+        for i in range(101):
+            bucket.upload_from_stream(
+                "file%s.txt" % i, open(
+                    os.path.join(TEST_PATH, os.path.join(
+                        'gridfs', 'file%s.txt' % i)), 'r'))
 
     def do_task(self):
-        # TODO: download files, saving each file in temp dir.
-        pass
+        pool = mp.Pool(mp.cpu_count())
+        pool.map(export_gridfs_file, range(101))
+        pool.close()
+        pool.join()
+
+    # def after(self):
+    #     shutil.rmtree(self.directory)
 
     def tearDown(self):
         super(GridFsMultiFileDownload, self).tearDown()
-        self.client.drop_database('perftest')
+        # self.client.drop_database('perftest')
 
 
 
