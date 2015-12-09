@@ -31,7 +31,7 @@ from pymongo.monotonic import time
 from pymongo.operations import InsertOne
 from test import client_context, host, port, unittest
 
-NUM_ITERATIONS = 1#00
+NUM_ITERATIONS = 100
 MAX_ITERATION_TIME = 300
 
 TEST_PATH = os.path.join(
@@ -226,7 +226,7 @@ class TestSmallDocInsertOne(TestDocuments, unittest.TestCase):
 class TestLargeDocInsertOne(TestDocuments, unittest.TestCase):
     def setUp(self):
         self.dataset = 'LARGE_DOC.json'
-        self.num_docs = 10#00
+        self.num_docs = 1000
         super(TestLargeDocInsertOne, self).setUp()
 
     def do_task(self):
@@ -264,7 +264,7 @@ class TestSmallDocBulkInsert(TestDocuments, unittest.TestCase):
 class TestLargeDocBulkInsert(TestDocuments, unittest.TestCase):
     def setUp(self):
         self.dataset = 'LARGE_DOC.json'
-        self.num_docs = 10#00
+        self.num_docs = 1000
         super(TestLargeDocBulkInsert, self).setUp()
 
     def do_task(self):
