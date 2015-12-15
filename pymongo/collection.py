@@ -676,7 +676,6 @@ class Collection(common.BaseObject):
 
         blk = _Bulk(self, ordered, bypass_document_validation)
         blk.ops = [doc for doc in gen()]
-        print blk.ops
         blk.execute(self.write_concern.document)
         return InsertManyResult(inserted_ids, self.write_concern.acknowledged)
 
