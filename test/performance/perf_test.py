@@ -1,4 +1,4 @@
-# Copyright 2009-2015 MongoDB, Inc.
+# Copyright 2015 MongoDB, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,13 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Tests for the performance spec."""
+"""Tests for the MongoDB Driver Performance Benchmarking Spec."""
 
+import json
 import multiprocessing as mp
 import os
 import shutil
 import sys
-import ujson as json
 import warnings
 
 sys.path[0:0] = [""]
@@ -56,7 +56,8 @@ class PerformanceTest(object):
         pass
 
     def tearDown(self):
-        print '\n', self.percentile(50)
+        print('Running %s. MEDIAN=%s' % (self.__class__.__name__,
+                                         self.percentile(50)))
 
     def before(self):
         pass
@@ -70,7 +71,7 @@ class PerformanceTest(object):
             percentile_index = int(self.max_iterations * percentile / 100) - 1
             return sorted_results[percentile_index]
         else:
-            self.assertTrue(False, 'Test execution failed')
+            self.fail('Test execution failed')
 
     def runTest(self):
         results = [0 for _ in range(NUM_ITERATIONS)]
@@ -79,7 +80,7 @@ class PerformanceTest(object):
         for i in range(NUM_ITERATIONS):
             if time() - start > MAX_ITERATION_TIME:
                 self.max_iterations = i
-                warnings.warn("Test timed out, completed %s iterations."
+                warnings.warn('Test timed out, completed %s iterations.'
                               % self.max_iterations)
                 break
             self.before()
@@ -101,7 +102,7 @@ class BsonEncodingTest(PerformanceTest):
 
     def do_task(self):
         for _ in range(NUM_CYCLES):
-            enc = BSON.encode(self.document)
+            BSON.encode(self.document)
 
 
 class BsonDecodingTest(PerformanceTest):
@@ -114,44 +115,31 @@ class BsonDecodingTest(PerformanceTest):
 
     def do_task(self):
         for _ in range(NUM_CYCLES):
-            dec = self.document.decode(
-                codec_options=CodecOptions(tz_aware=True))
+            self.document.decode(codec_options=CodecOptions(tz_aware=True))
 
 
 class TestFlatEncoding(BsonEncodingTest, unittest.TestCase):
-    def setUp(self):
-        self.dataset = 'flat_bson.json'
-        super(TestFlatEncoding, self).setUp()
+    dataset = 'flat_bson.json'
 
 
 class TestFlatDecoding(BsonDecodingTest, unittest.TestCase):
-    def setUp(self):
-        self.dataset = 'flat_bson.json'
-        super(TestFlatDecoding, self).setUp()
+    dataset = 'flat_bson.json'
 
 
 class TestNestedEncoding(BsonEncodingTest, unittest.TestCase):
-    def setUp(self):
-        self.dataset = 'deep_bson.json'
-        super(TestNestedEncoding, self).setUp()
+    dataset = 'deep_bson.json'
 
 
 class TestNestedDecoding(BsonDecodingTest, unittest.TestCase):
-    def setUp(self):
-        self.dataset = 'deep_bson.json'
-        super(TestNestedDecoding, self).setUp()
+    dataset = 'deep_bson.json'
 
 
 class TestAllBsonTypesEncoding(BsonEncodingTest, unittest.TestCase):
-    def setUp(self):
-        self.dataset = 'full_bson.json'
-        super(TestAllBsonTypesEncoding, self).setUp()
+    dataset = 'full_bson.json'
 
 
 class TestAllBsonTypesDecoding(BsonDecodingTest, unittest.TestCase):
-    def setUp(self):
-        self.dataset = 'full_bson.json'
-        super(TestAllBsonTypesDecoding, self).setUp()
+    dataset = 'full_bson.json'
 
 
 class TestRunCommand(PerformanceTest, unittest.TestCase):
@@ -200,7 +188,7 @@ class TestFindOneByID(TestOneDocument, unittest.TestCase):
 
     def do_task(self):
         for i in self.inserted_ids:
-            self.corpus.find_one({"_id": i})
+            self.corpus.find_one({'_id': i})
 
     def after(self):
         pass
@@ -279,7 +267,7 @@ class TestGridFsUpload(PerformanceTest, unittest.TestCase):
 
         gridfs_path = os.path.join(
             TEST_PATH, os.path.join('single_document', 'GRIDFS_LARGE'))
-        with open(gridfs_path, 'r') as data:
+        with open(gridfs_path, 'rb') as data:
             self.document = data.read()
 
     def tearDown(self):
@@ -290,7 +278,7 @@ class TestGridFsUpload(PerformanceTest, unittest.TestCase):
         self.client.perftest.drop_collection('fs.files')
         self.client.perftest.drop_collection('fs.chunks')
         self.bucket = GridFSBucket(self.client.perftest)
-        self.bucket.upload_from_stream('init', "x")
+        self.bucket.upload_from_stream('init', b'x')
 
     def do_task(self):
         self.bucket.upload_from_stream('gridfstest', self.document)
@@ -305,8 +293,8 @@ class TestGridFsDownload(PerformanceTest, unittest.TestCase):
             TEST_PATH, os.path.join('single_document', 'GRIDFS_LARGE'))
 
         bucket = GridFSBucket(self.client.perftest)
-        with open(gridfs_path, 'r') as gfile:
-            self.uploaded_id = bucket.upload_from_stream("gridfstest", gfile)
+        with open(gridfs_path, 'rb') as gfile:
+            self.uploaded_id = bucket.upload_from_stream('gridfstest', gfile)
 
     def tearDown(self):
         super(TestGridFsDownload, self).tearDown()
@@ -319,7 +307,14 @@ class TestGridFsDownload(PerformanceTest, unittest.TestCase):
         self.bucket.open_download_stream(self.uploaded_id).read()
 
 
-def import_json_file(i):
+def mp_map(map_func, length):
+    pool = mp.Pool(mp.cpu_count())
+    pool.map(map_func, length)
+    pool.close()
+    pool.join()
+
+
+def insert_json_file(i):
     client = MongoClient(host, port)
 
     ldjson_path = os.path.join(
@@ -334,7 +329,7 @@ def import_json_file(i):
     client.perftest.corpus.insert_many(documents)
 
 
-def import_json_file_with_file_id(i):
+def insert_json_file_with_file_id(i):
     client = MongoClient(host, port)
 
     ldjson_path = os.path.join(
@@ -360,24 +355,20 @@ class TestJsonMultiImport(PerformanceTest, unittest.TestCase):
         self.client.perftest.drop_collection('corpus')
 
     def do_task(self):
-        pool = mp.Pool(mp.cpu_count())
-        pool.map(import_json_file, range(100))
-        pool.close()
-        pool.join()
+        mp_map(insert_json_file, range(100))
 
     def tearDown(self):
         super(TestJsonMultiImport, self).tearDown()
         self.client.drop_database('perftest')
 
 
-def export_json_file(i):
+def read_json_file(i):
     client = MongoClient(host, port)
-
     temp_path = os.path.join(
         TEST_PATH, os.path.join(
             'parallel', os.path.join('json_temp', 'LDJSON%03d.txt' % i)))
     with open(temp_path, 'w') as data:
-        for doc in client.perftest.corpus.find({"file": i}):
+        for doc in client.perftest.corpus.find({'file': i}):
             data.write(str(doc) + '\n')
 
 
@@ -387,10 +378,7 @@ class TestJsonMultiExport(PerformanceTest, unittest.TestCase):
         self.client.drop_database('perftest')
         self.client.perfest.corpus.create_index('file')
 
-        pool = mp.Pool(mp.cpu_count())
-        pool.map(import_json_file_with_file_id, range(100))
-        pool.close()
-        pool.join()
+        mp_map(insert_json_file_with_file_id, range(100))
 
     def before(self):
         self.directory = os.path.join(TEST_PATH, os.path.join(
@@ -400,10 +388,7 @@ class TestJsonMultiExport(PerformanceTest, unittest.TestCase):
         os.makedirs(self.directory)
 
     def do_task(self):
-        pool = mp.Pool(mp.cpu_count())
-        pool.map(export_json_file, range(100))
-        pool.close()
-        pool.join()
+        mp_map(read_json_file, range(100))
 
     def after(self):
         shutil.rmtree(self.directory)
@@ -413,7 +398,7 @@ class TestJsonMultiExport(PerformanceTest, unittest.TestCase):
         self.client.drop_database('perftest')
 
 
-def import_gridfs_file(i):
+def insert_gridfs_file(i):
     client = MongoClient(host, port)
     bucket = GridFSBucket(client.perftest)
 
@@ -422,7 +407,7 @@ def import_gridfs_file(i):
         TEST_PATH, os.path.join(
             'parallel', os.path.join('GRIDFS_MULTI', filename)))
 
-    with open(gridfs_path, 'r') as gfile:
+    with open(gridfs_path, 'rb') as gfile:
         bucket.upload_from_stream(filename, gfile)
 
 
@@ -438,17 +423,14 @@ class TestGridFsMultiFileUpload(PerformanceTest, unittest.TestCase):
         self.bucket = GridFSBucket(self.client.perftest)
 
     def do_task(self):
-        pool = mp.Pool(mp.cpu_count())
-        pool.map(import_gridfs_file, range(50))
-        pool.close()
-        pool.join()
+        mp_map(insert_gridfs_file, range(50))
 
     def tearDown(self):
         super(TestGridFsMultiFileUpload, self).tearDown()
         self.client.drop_database('perftest')
 
 
-def export_gridfs_file(i):
+def read_gridfs_file(i):
     client = MongoClient(host, port)
     bucket = GridFSBucket(client.perftest)
 
@@ -456,7 +438,7 @@ def export_gridfs_file(i):
     temp_path = os.path.join(
         TEST_PATH, os.path.join(
             'parallel', os.path.join('gridfs_temp', filename)))
-    with open(temp_path, 'w') as gfile:
+    with open(temp_path, 'wb') as gfile:
         bucket.download_to_stream_by_name(filename, gfile)
 
 
@@ -471,7 +453,7 @@ class TestGridFsMultiFileDownload(PerformanceTest, unittest.TestCase):
             TEST_PATH, os.path.join('parallel', 'GRIDFS_MULTI'))
         for i in range(50):
             filename = 'file%s.txt' % i
-            with open(os.path.join(gridfs_path, filename), 'r') as gfile:
+            with open(os.path.join(gridfs_path, filename), 'rb') as gfile:
                 bucket.upload_from_stream(filename, gfile)
 
     def before(self):
@@ -482,10 +464,7 @@ class TestGridFsMultiFileDownload(PerformanceTest, unittest.TestCase):
         os.makedirs(self.directory)
 
     def do_task(self):
-        pool = mp.Pool(mp.cpu_count())
-        pool.map(export_gridfs_file, range(50))
-        pool.close()
-        pool.join()
+        mp_map(read_gridfs_file, range(50))
 
     def after(self):
         shutil.rmtree(self.directory)
