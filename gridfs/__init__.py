@@ -688,7 +688,7 @@ class GridFSBucket(object):
         """
         gout = self.open_download_stream_by_name(filename, revision)
 
-        destination.write(gout.read())
+        destination.write(gout)
 
     def rename(self, file_id, new_filename):
         """Renames the stored file with the specified file_id.
