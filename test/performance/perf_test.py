@@ -160,7 +160,7 @@ class TestRunCommand(PerformanceTest, unittest.TestCase):
             self.client.perftest.command(self.isMaster)
 
 
-class TestOneDocument(PerformanceTest):
+class TestDocument(PerformanceTest):
     def setUp(self):
         # Location of test data.
         with open(os.path.join(
@@ -172,7 +172,7 @@ class TestOneDocument(PerformanceTest):
         self.client.drop_database('perftest')
 
     def tearDown(self):
-        super(TestOneDocument, self).tearDown()
+        super(TestDocument, self).tearDown()
         self.client.drop_database('perftest')
 
     def before(self):
@@ -183,10 +183,10 @@ class TestOneDocument(PerformanceTest):
         self.client.perftest.drop_collection('corpus')
 
 
-class TestFindOneByID(TestOneDocument, unittest.TestCase):
+class TestFindByID(TestDocument, unittest.TestCase):
     def setUp(self):
         self.dataset = 'TWEET.json'
-        super(TestFindOneByID, self).setUp()
+        super(TestFindByID, self).setUp()
 
         documents = [self.document.copy() for _ in range(NUM_CYCLES)]
         result = self.client.perftest.corpus.insert_many(documents)
@@ -200,10 +200,10 @@ class TestFindOneByID(TestOneDocument, unittest.TestCase):
         pass
 
 
-class TestSmallDocInsertOne(TestOneDocument, unittest.TestCase):
+class TestSmallDocInsert(TestDocument, unittest.TestCase):
     def setUp(self):
         self.dataset = 'SMALL_DOC.json'
-        super(TestSmallDocInsertOne, self).setUp()
+        super(TestSmallDocInsert, self).setUp()
 
         self.documents = [self.document.copy() for _ in range(NUM_CYCLES)]
 
@@ -212,10 +212,10 @@ class TestSmallDocInsertOne(TestOneDocument, unittest.TestCase):
             self.corpus.insert_one(doc)
 
 
-class TestLargeDocInsertOne(TestOneDocument, unittest.TestCase):
+class TestLargeDocInsert(TestDocument, unittest.TestCase):
     def setUp(self):
         self.dataset = 'LARGE_DOC.json'
-        super(TestLargeDocInsertOne, self).setUp()
+        super(TestLargeDocInsert, self).setUp()
 
         self.documents = [self.document.copy() for _ in range(10)]
 
@@ -225,7 +225,7 @@ class TestLargeDocInsertOne(TestOneDocument, unittest.TestCase):
 
 
 # MULTI-DOC BENCHMARKS
-class TestFindManyAndEmptyCursor(TestOneDocument, unittest.TestCase):
+class TestFindManyAndEmptyCursor(TestDocument, unittest.TestCase):
     def setUp(self):
         self.dataset = 'TWEET.json'
         super(TestFindManyAndEmptyCursor, self).setUp()
@@ -247,7 +247,7 @@ class TestFindManyAndEmptyCursor(TestOneDocument, unittest.TestCase):
         pass
 
 
-class TestSmallDocBulkInsert(TestOneDocument, unittest.TestCase):
+class TestSmallDocBulkInsert(TestDocument, unittest.TestCase):
     def setUp(self):
         self.dataset = 'SMALL_DOC.json'
         super(TestSmallDocBulkInsert, self).setUp()
@@ -260,7 +260,7 @@ class TestSmallDocBulkInsert(TestOneDocument, unittest.TestCase):
         self.corpus.insert_many(self.documents, ordered=True)
 
 
-class TestLargeDocBulkInsert(TestOneDocument, unittest.TestCase):
+class TestLargeDocBulkInsert(TestDocument, unittest.TestCase):
     def setUp(self):
         self.dataset = 'LARGE_DOC.json'
         super(TestLargeDocBulkInsert, self).setUp()
