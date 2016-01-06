@@ -33,7 +33,7 @@ from pymongo.monotonic import time
 from pymongo.operations import InsertOne
 from test import client_context, host, port, unittest
 
-NUM_ITERATIONS = 1#00
+NUM_ITERATIONS = 2#100
 MAX_ITERATION_TIME = 300
 NUM_CYCLES = 100#00  # Number of times to iterate inside do_task
 
@@ -314,7 +314,7 @@ class TestGridFsDownload(PerformanceTest, unittest.TestCase):
         self.client.drop_database('perftest')
 
     def do_task(self):
-        self.bucket.open_download_stream(self.uploaded_id).read()
+        s = self.bucket.open_download_stream(self.uploaded_id).read()
 
 
 # PARALLEL BENCHMARKS
