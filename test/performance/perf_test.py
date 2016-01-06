@@ -36,6 +36,7 @@ from test import client_context, host, port, unittest
 NUM_ITERATIONS = 2#100
 MAX_ITERATION_TIME = 300
 NUM_CYCLES = 100#00  # Number of times to iterate inside do_task
+LDJSON_CYCLES = 50#00
 
 TEST_PATH = os.path.join(
     os.path.dirname(os.path.realpath(__file__)),
@@ -332,9 +333,9 @@ def insert_json_file(i):
         TEST_PATH, os.path.join(
             'parallel', os.path.join('LDJSON_MULTI', 'LDJSON%03d.txt' % i)))
 
-    documents = [0] * NUM_CYCLES
+    documents = [0] * LDJSON_CYCLES
     with open(ldjson_path, 'r') as data:
-        for j in range(NUM_CYCLES):
+        for j in range(LDJSON_CYCLES):
             documents[j] = json.loads(data.readline())
 
     client.perftest.corpus.insert_many(documents)
@@ -347,9 +348,9 @@ def insert_json_file_with_file_id(i):
         TEST_PATH, os.path.join(
             'parallel', os.path.join('LDJSON_MULTI', 'LDJSON%03d.txt' % i)))
 
-    documents = [0] * NUM_CYCLES
+    documents = [0] * LDJSON_CYCLES
     with open(ldjson_path, 'r') as data:
-        for j in range(NUM_CYCLES):
+        for j in range(LDJSON_CYCLES): # TODO: compare with generator
             documents[j] = json.loads(data.readline())
             documents[j]['file'] = i
 
@@ -391,18 +392,20 @@ def read_gridfs_file(i):
         temp.close()
 
 
-# PARALLEL TESTS
 class TestJsonMultiImport(PerformanceTest, unittest.TestCase):
     def setUp(self):
         self.client = client_context.rs_or_standalone_client
         self.client.drop_database('perftest')
 
     def before(self):
+        self.client.perftest.command({'create': 'corpus'})
         self.corpus = self.client.perftest.corpus
-        self.client.perftest.drop_collection('corpus')
 
     def do_task(self):
         mp_map(insert_json_file, range(100))
+
+    def after(self):
+        self.client.perftest.drop_collection('corpus')
 
     def tearDown(self):
         super(TestJsonMultiImport, self).tearDown()
