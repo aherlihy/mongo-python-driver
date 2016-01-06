@@ -17,6 +17,7 @@
 import json
 import multiprocessing as mp
 import os
+import tempfile
 import shutil
 import sys
 import warnings
@@ -34,7 +35,8 @@ from test import client_context, host, port, unittest
 
 NUM_ITERATIONS = 100
 MAX_ITERATION_TIME = 300
-NUM_CYCLES = 10000  # Number of times to iterate inside do_task
+NUM_DOCS = 10000  # Number of times to iterate inside do_task
+LDJSON_DOCS = 5000
 
 TEST_PATH = os.path.join(
     os.path.dirname(os.path.realpath(__file__)),
@@ -74,7 +76,7 @@ class PerformanceTest(object):
             self.fail('Test execution failed')
 
     def runTest(self):
-        results = [0 for _ in range(NUM_ITERATIONS)]
+        results = [0] * NUM_ITERATIONS
         start = time()
         self.max_iterations = NUM_ITERATIONS
         for i in range(NUM_ITERATIONS):
@@ -92,6 +94,7 @@ class PerformanceTest(object):
         self.results = results
 
 
+# BSON MICRO-BENCHMARKS
 class BsonEncodingTest(PerformanceTest):
     def setUp(self):
         # Location of test data.
@@ -101,7 +104,7 @@ class BsonEncodingTest(PerformanceTest):
             self.document = loads(data.read())
 
     def do_task(self):
-        for _ in range(NUM_CYCLES):
+        for _ in range(NUM_DOCS):
             BSON.encode(self.document)
 
 
@@ -114,8 +117,9 @@ class BsonDecodingTest(PerformanceTest):
             self.document = BSON.encode(json.loads(data.read()))
 
     def do_task(self):
-        for _ in range(NUM_CYCLES):
-            self.document.decode(codec_options=CodecOptions(tz_aware=True))
+        codec_options = CodecOptions(tz_aware=True)
+        for _ in range(NUM_DOCS):
+            self.document.decode(codec_options=codec_options)
 
 
 class TestFlatEncoding(BsonEncodingTest, unittest.TestCase):
@@ -126,22 +130,23 @@ class TestFlatDecoding(BsonDecodingTest, unittest.TestCase):
     dataset = 'flat_bson.json'
 
 
-class TestNestedEncoding(BsonEncodingTest, unittest.TestCase):
+class TestDeepEncoding(BsonEncodingTest, unittest.TestCase):
     dataset = 'deep_bson.json'
 
 
-class TestNestedDecoding(BsonDecodingTest, unittest.TestCase):
+class TestDeepDecoding(BsonDecodingTest, unittest.TestCase):
     dataset = 'deep_bson.json'
 
 
-class TestAllBsonTypesEncoding(BsonEncodingTest, unittest.TestCase):
+class TestFullEncoding(BsonEncodingTest, unittest.TestCase):
     dataset = 'full_bson.json'
 
 
-class TestAllBsonTypesDecoding(BsonDecodingTest, unittest.TestCase):
+class TestFullDecoding(BsonDecodingTest, unittest.TestCase):
     dataset = 'full_bson.json'
 
 
+# SINGLE-DOC BENCHMARKS
 class TestRunCommand(PerformanceTest, unittest.TestCase):
     def setUp(self):
         self.client = client_context.rs_or_standalone_client
@@ -151,38 +156,39 @@ class TestRunCommand(PerformanceTest, unittest.TestCase):
         self.isMaster = {'isMaster': True}
 
     def do_task(self):
-        for _ in range(NUM_CYCLES):
+        for _ in range(NUM_DOCS):
             self.client.perftest.command(self.isMaster)
 
 
-class TestOneDocument(PerformanceTest):
+class TestDocument(PerformanceTest):
     def setUp(self):
         # Location of test data.
         with open(os.path.join(
-            TEST_PATH, os.path.join(
-                'single_document', self.dataset)), 'r') as data:
+                TEST_PATH, os.path.join(
+                    'single_document', self.dataset)), 'r') as data:
             self.document = json.loads(data.read())
 
         self.client = client_context.rs_or_standalone_client
         self.client.drop_database('perftest')
 
     def tearDown(self):
-        super(TestOneDocument, self).tearDown()
+        super(TestDocument, self).tearDown()
         self.client.drop_database('perftest')
 
     def before(self):
+        self.client.perftest.command({'create': 'corpus'})
         self.corpus = self.client.perftest.corpus
 
     def after(self):
         self.client.perftest.drop_collection('corpus')
 
 
-class TestFindOneByID(TestOneDocument, unittest.TestCase):
+class TestFindByID(TestDocument, unittest.TestCase):
     def setUp(self):
         self.dataset = 'TWEET.json'
-        super(TestFindOneByID, self).setUp()
+        super(TestFindByID, self).setUp()
 
-        documents = [self.document.copy() for _ in range(NUM_CYCLES)]
+        documents = [self.document.copy() for _ in range(NUM_DOCS)]
         result = self.client.perftest.corpus.insert_many(documents)
         self.inserted_ids = result.inserted_ids
 
@@ -194,70 +200,77 @@ class TestFindOneByID(TestOneDocument, unittest.TestCase):
         pass
 
 
-class TestSmallDocInsertOne(TestOneDocument, unittest.TestCase):
+class TestSmallDocInsert(TestDocument, unittest.TestCase):
     def setUp(self):
         self.dataset = 'SMALL_DOC.json'
-        super(TestSmallDocInsertOne, self).setUp()
+        super(TestSmallDocInsert, self).setUp()
+
+        self.documents = [self.document.copy() for _ in range(NUM_DOCS)]
 
     def do_task(self):
-        for _ in range(NUM_CYCLES):
-            self.corpus.insert_one(self.document)
-            self.document.pop('_id')  # Hack! Ugh!
+        for doc in self.documents:
+            self.corpus.insert_one(doc)
 
 
-class TestLargeDocInsertOne(TestOneDocument, unittest.TestCase):
+class TestLargeDocInsert(TestDocument, unittest.TestCase):
     def setUp(self):
         self.dataset = 'LARGE_DOC.json'
-        super(TestLargeDocInsertOne, self).setUp()
+        super(TestLargeDocInsert, self).setUp()
+
+        self.documents = [self.document.copy() for _ in range(10)]
 
     def do_task(self):
-        for _ in range(10):
-            self.corpus.insert_one(self.document)
-            self.document.pop('_id')  # Hack! Ugh!
+        for doc in self.documents:
+            self.corpus.insert_one(doc)
 
 
-class TestFindManyAndEmptyCursor(TestOneDocument, unittest.TestCase):
+# MULTI-DOC BENCHMARKS
+class TestFindManyAndEmptyCursor(TestDocument, unittest.TestCase):
     def setUp(self):
         self.dataset = 'TWEET.json'
         super(TestFindManyAndEmptyCursor, self).setUp()
 
-        for _ in range(100):
+        for _ in range(10):
             self.client.perftest.command(
                 'insert', 'corpus',
-                documents=[self.document for _ in range(1000)])
+                documents=[self.document] * 1000)
+        self.corpus = self.client.perftest.corpus
 
     def do_task(self):
-        len(list(self.corpus.find({})))
+        for _ in self.corpus.find():
+            pass
+
+    def before(self):
+        pass
 
     def after(self):
         pass
 
 
-class TestSmallDocBulkInsert(TestOneDocument, unittest.TestCase):
+class TestSmallDocBulkInsert(TestDocument, unittest.TestCase):
     def setUp(self):
         self.dataset = 'SMALL_DOC.json'
         super(TestSmallDocBulkInsert, self).setUp()
 
     def before(self):
         self.corpus = self.client.perftest.corpus
-        self.documents = [InsertOne(
-            self.document.copy()) for _ in range(NUM_CYCLES)]
+        self.documents = [self.document.copy() for _ in range(NUM_DOCS)]
 
     def do_task(self):
-        self.corpus.bulk_write(self.documents, ordered=True)
+        self.corpus.insert_many(self.documents, ordered=True)
 
 
-class TestLargeDocBulkInsert(TestOneDocument, unittest.TestCase):
+class TestLargeDocBulkInsert(TestDocument, unittest.TestCase):
     def setUp(self):
         self.dataset = 'LARGE_DOC.json'
         super(TestLargeDocBulkInsert, self).setUp()
-        self.documents = [InsertOne(self.document.copy()) for _ in range(10)]
+        self.documents = [self.document.copy() for _ in range(10)]
 
     def before(self):
         self.corpus = self.client.perftest.corpus
 
     def do_task(self):
-        self.corpus.bulk_write(self.documents, ordered=True)
+        self.corpus.insert_many(self.documents, ordered=True)
 
 
 class TestGridFsUpload(PerformanceTest, unittest.TestCase):
@@ -270,6 +283,8 @@ class TestGridFsUpload(PerformanceTest, unittest.TestCase):
         with open(gridfs_path, 'rb') as data:
             self.document = data.read()
 
+        self.bucket = GridFSBucket(self.client.perftest)
+
     def tearDown(self):
         super(TestGridFsUpload, self).tearDown()
         self.client.drop_database('perftest')
@@ -277,7 +292,6 @@ class TestGridFsUpload(PerformanceTest, unittest.TestCase):
     def before(self):
         self.client.perftest.drop_collection('fs.files')
         self.client.perftest.drop_collection('fs.chunks')
-        self.bucket = GridFSBucket(self.client.perftest)
         self.bucket.upload_from_stream('init', b'x')
 
     def do_task(self):
@@ -292,23 +306,22 @@ class TestGridFsDownload(PerformanceTest, unittest.TestCase):
         gridfs_path = os.path.join(
             TEST_PATH, os.path.join('single_document', 'GRIDFS_LARGE'))
 
-        bucket = GridFSBucket(self.client.perftest)
+        self.bucket = GridFSBucket(self.client.perftest)
         with open(gridfs_path, 'rb') as gfile:
-            self.uploaded_id = bucket.upload_from_stream('gridfstest', gfile)
+            self.uploaded_id = self.bucket.upload_from_stream(
+                'gridfstest', gfile)
 
     def tearDown(self):
         super(TestGridFsDownload, self).tearDown()
         self.client.drop_database('perftest')
 
-    def before(self):
-        self.bucket = GridFSBucket(self.client.perftest)
-
     def do_task(self):
         self.bucket.open_download_stream(self.uploaded_id).read()
 
 
+# PARALLEL BENCHMARKS
 def mp_map(map_func, length):
-    pool = mp.Pool(mp.cpu_count())
+    pool = mp.Pool()
     pool.map(map_func, length)
     pool.close()
     pool.join()
@@ -321,9 +334,9 @@ def insert_json_file(i):
         TEST_PATH, os.path.join(
             'parallel', os.path.join('LDJSON_MULTI', 'LDJSON%03d.txt' % i)))
 
-    documents = [0 for _ in range(NUM_CYCLES)]
+    documents = [0] * LDJSON_DOCS
     with open(ldjson_path, 'r') as data:
-        for j in range(NUM_CYCLES):
+        for j in range(LDJSON_DOCS):
             documents[j] = json.loads(data.readline())
 
     client.perftest.corpus.insert_many(documents)
@@ -336,66 +349,23 @@ def insert_json_file_with_file_id(i):
         TEST_PATH, os.path.join(
             'parallel', os.path.join('LDJSON_MULTI', 'LDJSON%03d.txt' % i)))
 
-    documents = [0 for _ in range(NUM_CYCLES)]
+    documents = [0] * LDJSON_DOCS
     with open(ldjson_path, 'r') as data:
-        for j in range(NUM_CYCLES):
+        for j in range(LDJSON_DOCS):  # TODO: compare with generator
             documents[j] = json.loads(data.readline())
             documents[j]['file'] = i
 
     client.perftest.corpus.insert_many(documents)
 
 
-class TestJsonMultiImport(PerformanceTest, unittest.TestCase):
-    def setUp(self):
-        self.client = client_context.rs_or_standalone_client
-        self.client.drop_database('perftest')
-
-    def before(self):
-        self.corpus = self.client.perftest.corpus
-        self.client.perftest.drop_collection('corpus')
-
-    def do_task(self):
-        mp_map(insert_json_file, range(100))
-
-    def tearDown(self):
-        super(TestJsonMultiImport, self).tearDown()
-        self.client.drop_database('perftest')
-
-
 def read_json_file(i):
     client = MongoClient(host, port)
-    temp_path = os.path.join(
-        TEST_PATH, os.path.join(
-            'parallel', os.path.join('json_temp', 'LDJSON%03d.txt' % i)))
-    with open(temp_path, 'w') as data:
+    temp = tempfile.TemporaryFile()
+    try:
         for doc in client.perftest.corpus.find({'file': i}):
-            data.write(str(doc) + '\n')
-
-
-class TestJsonMultiExport(PerformanceTest, unittest.TestCase):
-    def setUp(self):
-        self.client = client_context.rs_or_standalone_client
-        self.client.drop_database('perftest')
-        self.client.perfest.corpus.create_index('file')
-
-        mp_map(insert_json_file_with_file_id, range(100))
-
-    def before(self):
-        self.directory = os.path.join(TEST_PATH, os.path.join(
-            'parallel', 'json_temp'))
-        if os.path.exists(self.directory):
-            shutil.rmtree(self.directory)
-        os.makedirs(self.directory)
-
-    def do_task(self):
-        mp_map(read_json_file, range(100))
-
-    def after(self):
-        shutil.rmtree(self.directory)
-
-    def tearDown(self):
-        super(TestJsonMultiExport, self).tearDown()
-        self.client.drop_database('perftest')
+            temp.write(str(doc) + '\n')
+    finally:
+        temp.close()
 
 
 def insert_gridfs_file(i):
@@ -409,6 +379,54 @@ def insert_gridfs_file(i):
 
     with open(gridfs_path, 'rb') as gfile:
         bucket.upload_from_stream(filename, gfile)
+
+
+def read_gridfs_file(i):
+    client = MongoClient(host, port)
+    bucket = GridFSBucket(client.perftest)
+
+    filename = 'file%s.txt' % i
+    temp = tempfile.TemporaryFile()
+    try:
+        bucket.download_to_stream_by_name(filename, temp)
+    finally:
+        temp.close()
+
+
+class TestJsonMultiImport(PerformanceTest, unittest.TestCase):
+    def setUp(self):
+        self.client = client_context.rs_or_standalone_client
+        self.client.drop_database('perftest')
+
+    def before(self):
+        self.client.perftest.command({'create': 'corpus'})
+        self.corpus = self.client.perftest.corpus
+
+    def do_task(self):
+        mp_map(insert_json_file, range(100))
+
+    def after(self):
+        self.client.perftest.drop_collection('corpus')
+
+    def tearDown(self):
+        super(TestJsonMultiImport, self).tearDown()
+        self.client.drop_database('perftest')
+
+
+class TestJsonMultiExport(PerformanceTest, unittest.TestCase):
+    def setUp(self):
+        self.client = client_context.rs_or_standalone_client
+        self.client.drop_database('perftest')
+        self.client.perfest.corpus.create_index('file')
+
+        mp_map(insert_json_file_with_file_id, range(100))
+
+    def do_task(self):
+        mp_map(read_json_file, range(100))
+
+    def tearDown(self):
+        super(TestJsonMultiExport, self).tearDown()
+        self.client.drop_database('perftest')
 
 
 class TestGridFsMultiFileUpload(PerformanceTest, unittest.TestCase):
@@ -430,18 +448,6 @@ class TestGridFsMultiFileUpload(PerformanceTest, unittest.TestCase):
         self.client.drop_database('perftest')
 
 
-def read_gridfs_file(i):
-    client = MongoClient(host, port)
-    bucket = GridFSBucket(client.perftest)
-
-    filename = 'file%s.txt' % i
-    temp_path = os.path.join(
-        TEST_PATH, os.path.join(
-            'parallel', os.path.join('gridfs_temp', filename)))
-    with open(temp_path, 'wb') as gfile:
-        bucket.download_to_stream_by_name(filename, gfile)
-
-
 class TestGridFsMultiFileDownload(PerformanceTest, unittest.TestCase):
     def setUp(self):
         self.client = client_context.rs_or_standalone_client
@@ -456,18 +462,8 @@ class TestGridFsMultiFileDownload(PerformanceTest, unittest.TestCase):
             with open(os.path.join(gridfs_path, filename), 'rb') as gfile:
                 bucket.upload_from_stream(filename, gfile)
 
-    def before(self):
-        self.directory = os.path.join(
-            TEST_PATH, os.path.join('parallel', 'gridfs_temp'))
-        if os.path.exists(self.directory):
-            shutil.rmtree(self.directory)
-        os.makedirs(self.directory)
-
     def do_task(self):
         mp_map(read_gridfs_file, range(50))
-
-    def after(self):
-        shutil.rmtree(self.directory)
 
     def tearDown(self):
         super(TestGridFsMultiFileDownload, self).tearDown()
