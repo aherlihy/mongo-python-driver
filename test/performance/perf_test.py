@@ -35,7 +35,7 @@ from test import client_context, host, port, unittest
 
 NUM_ITERATIONS = 1#00
 MAX_ITERATION_TIME = 300
-NUM_CYCLES = 10#000  # Number of times to iterate inside do_task
+NUM_CYCLES = 100#00  # Number of times to iterate inside do_task
 
 TEST_PATH = os.path.join(
     os.path.dirname(os.path.realpath(__file__)),
@@ -146,6 +146,19 @@ class TestFullDecoding(BsonDecodingTest, unittest.TestCase):
 
 
 # SINGLE-DOC BENCHMARKS
+class TestRunCommand(PerformanceTest, unittest.TestCase):
+    def setUp(self):
+        self.client = client_context.rs_or_standalone_client
+        self.client.drop_database('perftest')
+
+    def before(self):
+        self.isMaster = {'isMaster': True}
+
+    def do_task(self):
+        for _ in range(NUM_CYCLES):
+            self.client.perftest.command(self.isMaster)
+
+
 class TestOneDocument(PerformanceTest):
     def setUp(self):
         # Location of test data.
@@ -162,23 +175,11 @@ class TestOneDocument(PerformanceTest):
         self.client.drop_database('perftest')
 
     def before(self):
+        self.client.perftest.command({'create': 'corpus'})
         self.corpus = self.client.perftest.corpus
 
     def after(self):
         self.client.perftest.drop_collection('corpus')
-
-
-class TestRunCommand(PerformanceTest, unittest.TestCase):
-    def setUp(self):
-        self.client = client_context.rs_or_standalone_client
-        self.client.drop_database('perftest')
-
-    def before(self):
-        self.isMaster = {'isMaster': True}
-
-    def do_task(self):
-        for _ in range(NUM_CYCLES):
-            self.client.perftest.command(self.isMaster)
 
 
 class TestFindOneByID(TestOneDocument, unittest.TestCase):
@@ -203,10 +204,11 @@ class TestSmallDocInsertOne(TestOneDocument, unittest.TestCase):
         self.dataset = 'SMALL_DOC.json'
         super(TestSmallDocInsertOne, self).setUp()
 
+        self.documents = [self.document.copy() for _ in range(NUM_CYCLES)]
+
     def do_task(self):
-        for _ in range(NUM_CYCLES):
-            self.corpus.insert_one(self.document)
-            self.document.pop('_id')  # Hack! Ugh!
+        for doc in self.documents:
+            self.corpus.insert_one(doc)
 
 
 class TestLargeDocInsertOne(TestOneDocument, unittest.TestCase):
@@ -214,12 +216,14 @@ class TestLargeDocInsertOne(TestOneDocument, unittest.TestCase):
         self.dataset = 'LARGE_DOC.json'
         super(TestLargeDocInsertOne, self).setUp()
 
+        self.documents = [self.document.copy() for _ in range(10)]
+
     def do_task(self):
-        for _ in range(10):
-            self.corpus.insert_one(self.document)
-            self.document.pop('_id')  # Hack! Ugh!
+        for doc in self.documents:
+            self.corpus.insert_one(doc)
 
 
+# MULTI-DOC BENCHMARKS
 class TestFindManyAndEmptyCursor(TestOneDocument, unittest.TestCase):
     def setUp(self):
         self.dataset = 'TWEET.json'
@@ -229,10 +233,14 @@ class TestFindManyAndEmptyCursor(TestOneDocument, unittest.TestCase):
             self.client.perftest.command(
                 'insert', 'corpus',
                 documents=[self.document] * 1000)
+        self.corpus = self.client.perftest.corpus
 
     def do_task(self):
         for _ in self.corpus.find():
             pass
+
+    def before(self):
+        pass
 
     def after(self):
         pass
