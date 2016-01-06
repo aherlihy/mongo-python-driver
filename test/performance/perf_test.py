@@ -35,7 +35,7 @@ from test import client_context, host, port, unittest
 
 NUM_ITERATIONS = 100
 MAX_ITERATION_TIME = 300
-NUM_DOCS = 10000  # Number of times to iterate inside do_task
+NUM_CYCLES = 10000  # Number of times to iterate inside do_task
 LDJSON_DOCS = 5000
 
 TEST_PATH = os.path.join(
@@ -104,7 +104,7 @@ class BsonEncodingTest(PerformanceTest):
             self.document = loads(data.read())
 
     def do_task(self):
-        for _ in range(NUM_DOCS):
+        for _ in range(NUM_CYCLES):
             BSON.encode(self.document)
 
 
@@ -118,7 +118,7 @@ class BsonDecodingTest(PerformanceTest):
 
     def do_task(self):
         codec_options = CodecOptions(tz_aware=True)
-        for _ in range(NUM_DOCS):
+        for _ in range(NUM_CYCLES):
             self.document.decode(codec_options=codec_options)
 
 
@@ -156,7 +156,7 @@ class TestRunCommand(PerformanceTest, unittest.TestCase):
         self.isMaster = {'isMaster': True}
 
     def do_task(self):
-        for _ in range(NUM_DOCS):
+        for _ in range(NUM_CYCLES):
             self.client.perftest.command(self.isMaster)
 
 
@@ -183,12 +183,12 @@ class TestDocument(PerformanceTest):
         self.client.perftest.drop_collection('corpus')
 
 
-class TestFindByID(TestDocument, unittest.TestCase):
+class TestFindOneByID(TestDocument, unittest.TestCase):
     def setUp(self):
         self.dataset = 'TWEET.json'
-        super(TestFindByID, self).setUp()
+        super(TestFindOneByID, self).setUp()
 
-        documents = [self.document.copy() for _ in range(NUM_DOCS)]
+        documents = [self.document.copy() for _ in range(NUM_CYCLES)]
         result = self.client.perftest.corpus.insert_many(documents)
         self.inserted_ids = result.inserted_ids
 
@@ -200,22 +200,22 @@ class TestFindByID(TestDocument, unittest.TestCase):
         pass
 
 
-class TestSmallDocInsert(TestDocument, unittest.TestCase):
+class TestSmallDocInsertOne(TestDocument, unittest.TestCase):
     def setUp(self):
         self.dataset = 'SMALL_DOC.json'
-        super(TestSmallDocInsert, self).setUp()
+        super(TestSmallDocInsertOne, self).setUp()
 
-        self.documents = [self.document.copy() for _ in range(NUM_DOCS)]
+        self.documents = [self.document.copy() for _ in range(NUM_CYCLES)]
 
     def do_task(self):
         for doc in self.documents:
             self.corpus.insert_one(doc)
 
 
-class TestLargeDocInsert(TestDocument, unittest.TestCase):
+class TestLargeDocInsertOne(TestDocument, unittest.TestCase):
     def setUp(self):
         self.dataset = 'LARGE_DOC.json'
-        super(TestLargeDocInsert, self).setUp()
+        super(TestLargeDocInsertOne, self).setUp()
 
         self.documents = [self.document.copy() for _ in range(10)]
 
@@ -254,7 +254,7 @@ class TestSmallDocBulkInsert(TestDocument, unittest.TestCase):
 
     def before(self):
         self.corpus = self.client.perftest.corpus
-        self.documents = [self.document.copy() for _ in range(NUM_DOCS)]
+        self.documents = [self.document.copy() for _ in range(NUM_CYCLES)]
 
     def do_task(self):
         self.corpus.insert_many(self.documents, ordered=True)
