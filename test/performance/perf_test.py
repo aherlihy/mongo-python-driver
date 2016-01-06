@@ -33,10 +33,10 @@ from pymongo.monotonic import time
 from pymongo.operations import InsertOne
 from test import client_context, host, port, unittest
 
-NUM_ITERATIONS = 2#100
+NUM_ITERATIONS = 100
 MAX_ITERATION_TIME = 300
-NUM_CYCLES = 100#00  # Number of times to iterate inside do_task
-LDJSON_CYCLES = 50#00
+NUM_DOCS = 10000  # Number of times to iterate inside do_task
+LDJSON_DOCS = 5000
 
 TEST_PATH = os.path.join(
     os.path.dirname(os.path.realpath(__file__)),
@@ -104,7 +104,7 @@ class BsonEncodingTest(PerformanceTest):
             self.document = loads(data.read())
 
     def do_task(self):
-        for _ in range(NUM_CYCLES):
+        for _ in range(NUM_DOCS):
             BSON.encode(self.document)
 
 
@@ -118,7 +118,7 @@ class BsonDecodingTest(PerformanceTest):
 
     def do_task(self):
         codec_options = CodecOptions(tz_aware=True)
-        for _ in range(NUM_CYCLES):
+        for _ in range(NUM_DOCS):
             self.document.decode(codec_options=codec_options)
 
 
@@ -156,7 +156,7 @@ class TestRunCommand(PerformanceTest, unittest.TestCase):
         self.isMaster = {'isMaster': True}
 
     def do_task(self):
-        for _ in range(NUM_CYCLES):
+        for _ in range(NUM_DOCS):
             self.client.perftest.command(self.isMaster)
 
 
@@ -165,7 +165,7 @@ class TestDocument(PerformanceTest):
         # Location of test data.
         with open(os.path.join(
                 TEST_PATH, os.path.join(
-                        'single_document', self.dataset)), 'r') as data:
+                    'single_document', self.dataset)), 'r') as data:
             self.document = json.loads(data.read())
 
         self.client = client_context.rs_or_standalone_client
@@ -188,7 +188,7 @@ class TestFindByID(TestDocument, unittest.TestCase):
         self.dataset = 'TWEET.json'
         super(TestFindByID, self).setUp()
 
-        documents = [self.document.copy() for _ in range(NUM_CYCLES)]
+        documents = [self.document.copy() for _ in range(NUM_DOCS)]
         result = self.client.perftest.corpus.insert_many(documents)
         self.inserted_ids = result.inserted_ids
 
@@ -205,7 +205,7 @@ class TestSmallDocInsert(TestDocument, unittest.TestCase):
         self.dataset = 'SMALL_DOC.json'
         super(TestSmallDocInsert, self).setUp()
 
-        self.documents = [self.document.copy() for _ in range(NUM_CYCLES)]
+        self.documents = [self.document.copy() for _ in range(NUM_DOCS)]
 
     def do_task(self):
         for doc in self.documents:
@@ -254,7 +254,7 @@ class TestSmallDocBulkInsert(TestDocument, unittest.TestCase):
 
     def before(self):
         self.corpus = self.client.perftest.corpus
-        self.documents = [self.document.copy() for _ in range(NUM_CYCLES)]
+        self.documents = [self.document.copy() for _ in range(NUM_DOCS)]
 
     def do_task(self):
         self.corpus.insert_many(self.documents, ordered=True)
@@ -308,14 +308,15 @@ class TestGridFsDownload(PerformanceTest, unittest.TestCase):
 
         self.bucket = GridFSBucket(self.client.perftest)
         with open(gridfs_path, 'rb') as gfile:
-            self.uploaded_id = self.bucket.upload_from_stream('gridfstest', gfile)
+            self.uploaded_id = self.bucket.upload_from_stream(
+                'gridfstest', gfile)
 
     def tearDown(self):
         super(TestGridFsDownload, self).tearDown()
         self.client.drop_database('perftest')
 
     def do_task(self):
-        s = self.bucket.open_download_stream(self.uploaded_id).read()
+        self.bucket.open_download_stream(self.uploaded_id).read()
 
 
 # PARALLEL BENCHMARKS
@@ -333,9 +334,9 @@ def insert_json_file(i):
         TEST_PATH, os.path.join(
             'parallel', os.path.join('LDJSON_MULTI', 'LDJSON%03d.txt' % i)))
 
-    documents = [0] * LDJSON_CYCLES
+    documents = [0] * LDJSON_DOCS
     with open(ldjson_path, 'r') as data:
-        for j in range(LDJSON_CYCLES):
+        for j in range(LDJSON_DOCS):
             documents[j] = json.loads(data.readline())
 
     client.perftest.corpus.insert_many(documents)
@@ -348,9 +349,9 @@ def insert_json_file_with_file_id(i):
         TEST_PATH, os.path.join(
             'parallel', os.path.join('LDJSON_MULTI', 'LDJSON%03d.txt' % i)))
 
-    documents = [0] * LDJSON_CYCLES
+    documents = [0] * LDJSON_DOCS
     with open(ldjson_path, 'r') as data:
-        for j in range(LDJSON_CYCLES): # TODO: compare with generator
+        for j in range(LDJSON_DOCS):  # TODO: compare with generator
             documents[j] = json.loads(data.readline())
             documents[j]['file'] = i
 
