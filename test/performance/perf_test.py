@@ -392,7 +392,8 @@ class TestJsonMultiImport(PerformanceTest, unittest.TestCase):
 
         ldjson_path = os.path.join(
             TEST_PATH, os.path.join('parallel', 'LDJSON_MULTI'))
-        self.files = [os.path.join(ldjson_path, s) for s in os.listdir(ldjson_path)]
+        self.files = [os.path.join(
+            ldjson_path, s) for s in os.listdir(ldjson_path)]
 
     def do_task(self):
         mp_map(insert_json_file, self.files)
@@ -413,7 +414,8 @@ class TestJsonMultiExport(PerformanceTest, unittest.TestCase):
 
         ldjson_path = os.path.join(
             TEST_PATH, os.path.join('parallel', 'LDJSON_MULTI'))
-        self.files = [os.path.join(ldjson_path, s) for s in os.listdir(ldjson_path)]
+        self.files = [os.path.join(
+            ldjson_path, s) for s in os.listdir(ldjson_path)]
 
         mp_map(insert_json_file_with_file_id, self.files)
 
@@ -437,7 +439,8 @@ class TestGridFsMultiFileUpload(PerformanceTest, unittest.TestCase):
         self.bucket = GridFSBucket(self.client.perftest)
         gridfs_path = os.path.join(
             TEST_PATH, os.path.join('parallel', 'GRIDFS_MULTI'))
-        self.files = [os.path.join(gridfs_path, s) for s in os.listdir(gridfs_path)]
+        self.files = [os.path.join(
+            gridfs_path, s) for s in os.listdir(gridfs_path)]
 
     def do_task(self):
         mp_map(insert_gridfs_file, self.files)
@@ -456,7 +459,8 @@ class TestGridFsMultiFileDownload(PerformanceTest, unittest.TestCase):
 
         gridfs_path = os.path.join(
             TEST_PATH, os.path.join('parallel', 'GRIDFS_MULTI'))
-        self.files = [os.path.join(gridfs_path, s) for s in os.listdir(gridfs_path)]
+        self.files = [os.path.join(
+            gridfs_path, s) for s in os.listdir(gridfs_path)]
 
         for fname in self.files:
             with open(fname, 'rb') as gfile:
