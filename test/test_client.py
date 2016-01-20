@@ -188,7 +188,7 @@ class ClientUnitTest(unittest.TestCase):
 class TestClient(IntegrationTest):
 
     def test_max_idle_time_reaper(self):
-        with client_knobs(kill_cursor_frequency=.1):
+        with client_knobs(kill_cursor_frequency=0.1):
             # Assert reaper doesn't remove sockets when maxIdleTimeMS not set
             client = MongoClient(host, port)
             server = client._get_topology().select_server(any_server_selector)
@@ -858,7 +858,7 @@ class TestClient(IntegrationTest):
             client.close_cursor(1234, ('doesnt-exist', 27017))
 
             with warnings.catch_warnings(record=True) as user_warnings:
-                client._process_kill_cursors_queue()
+                client._process_periodic_tasks()
 
             self.assertIn("couldn't close cursor on ('doesnt-exist', 27017)",
                           str(user_warnings[0].message))

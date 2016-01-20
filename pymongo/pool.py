@@ -91,23 +91,31 @@ class PoolOptions(object):
 
     @property
     def max_pool_size(self):
-        """The maximum number of connections that the pool will open
-        simultaneously. If this is set, operations will block if there
-        are `max_pool_size` outstanding connections.
+        """The maximum allowable number of concurrent connections to each
+        connected server. Requests to a server will block if there are
+        `maxPoolSize` outstanding connections to the requested server.
+        Defaults to 100. Cannot be 0.
+
+        When a server's pool has reached `max_pool_size`, operations for that
+        server block waiting for a socket to be returned to the pool. If
+        ``waitQueueTimeoutMS`` is set, a blocked operation will raise
+        :exc:`~pymongo.errors.ConnectionFailure` after a timeout.
+        By default ``waitQueueTimeoutMS`` is not set.
         """
         return self.__max_pool_size
 
     @property
     def min_pool_size(self):
-        """The minimum number of connections that the pool will open
-        simultaneously. Default is 0.
+        """The minimum required number of concurrent connections that the pool
+        will maintain to each connected server. Default is 0.
         """
         return self.__min_pool_size
 
     @property
     def max_idle_time_ms(self):
         """The maximum number of milliseconds that a connection can remain
-        idle in the pool before being removed and closed.
+        idle in the pool before being removed and replaced. Defaults to
+        `None` (no limit).
         """
         return self.__max_idle_time_ms
 
