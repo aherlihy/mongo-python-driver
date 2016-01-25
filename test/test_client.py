@@ -846,23 +846,6 @@ class TestClient(IntegrationTest):
 
         wait_until(raises_cursor_not_found, 'close cursor')
 
-    def test_kill_cursors_with_server_unavailable(self):
-        with client_knobs(kill_cursor_frequency=9999999):
-            client = MongoClient('doesnt exist', connect=False,
-                                 serverSelectionTimeoutMS=0)
-
-            # Wait for the first tick of the periodic kill-cursors to pass.
-            time.sleep(1)
-
-            # Enqueue a kill-cursors message.
-            client.close_cursor(1234, ('doesnt-exist', 27017))
-
-            with warnings.catch_warnings(record=True) as user_warnings:
-                client._process_periodic_tasks()
-
-            self.assertIn("couldn't close cursor on ('doesnt-exist', 27017)",
-                          str(user_warnings[0].message))
-
     def test_lazy_connect_w0(self):
         # Ensure that connect-on-demand works when the first operation is
         # an unacknowledged write. This exercises _writable_max_wire_version().

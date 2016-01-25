@@ -1032,13 +1032,13 @@ class MongoClient(common.BaseObject):
                                     duration, reply, 'killCursors', request_id,
                                     address)
 
-                except ConnectionFailure as exc:
-                    warnings.warn("couldn't close cursor on %s: %s"
-                                  % (address, exc))
+                except ConnectionFailure:
+                    helpers._handle_exception()
         try:
             self._topology.update_pool()
         except Exception:
             helpers._handle_exception()
+
     def server_info(self):
         """Get information about the MongoDB server we're connected to."""
         return self.admin.command("buildinfo",
