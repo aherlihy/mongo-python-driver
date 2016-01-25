@@ -479,6 +479,8 @@ class Pool:
 
         self.sockets = set()
         self.lock = threading.Lock()
+        self.active_sockets_lock = threading.Lock()
+        self.active_sockets = 0
 
         # Keep track of resets, so we notice sockets created before the most
         # recent reset and close them.
@@ -503,6 +505,8 @@ class Pool:
             self.pool_id += 1
             self.pid = os.getpid()
             sockets, self.sockets = self.sockets, set()
+        with self.active_sockets_lock:
+            self.active_sockets = 0
 
         for sock_info in sockets:
             sock_info.close()
@@ -515,8 +519,14 @@ class Pool:
                     if age > self.opts.max_idle_time_ms:
                         self.sockets.remove(sock_info)
                         sock_info.close()
-            while len(self.sockets) < self.opts.min_pool_size:
+
+            with self.active_sockets_lock:
+                active_sockets = self.active_sockets
+            while len(self.sockets) + active_sockets < self.opts.min_pool_size:
                 sock_info = self.connect()
+                with self.active_sockets_lock:
+                    self.active_sockets -= 1  # this socket is not active
+                    active_sockets = self.active_sockets
                 self.sockets.add(sock_info)
 
     def connect(self):
@@ -537,6 +547,8 @@ class Pool:
                                             DEFAULT_CODEC_OPTIONS))
             else:
                 ismaster = None
+            with self.active_sockets_lock:
+                self.active_sockets += 1
             return SocketInfo(sock, self, ismaster, self.address)
         except socket.error as error:
             if sock is not None:
@@ -626,6 +638,8 @@ class Pool:
         if self.pid != os.getpid():
             self.reset()
         else:
+            with self.active_sockets_lock:
+                self.active_sockets -= 1
             if sock_info.pool_id != self.pool_id:
                 sock_info.close()
             elif not sock_info.closed:
@@ -660,6 +674,8 @@ class Pool:
                 error = True
 
         if not error:
+            with self.active_sockets_lock:
+                self.active_sockets += 1
             return sock_info
         else:
             return self.connect()
