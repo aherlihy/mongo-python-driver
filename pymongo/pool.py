@@ -600,15 +600,15 @@ class Pool:
                 # http://bugs.jython.org/issue1854
                 with self.lock:
                     sock_info, from_pool = self.sockets.pop(), True
-                    # If socket is idle, open a new one.
-                    if self.opts.max_idle_time_ms is not None:
-                        age = _time() - sock_info.last_checkout
-                        if age > self.opts.max_idle_time_ms:
-                            sock_info.close()
-                            raise KeyError
             except KeyError:
                 # Can raise ConnectionFailure or CertificateError.
                 sock_info, from_pool = self.connect(), False
+            # If socket is idle, open a new one.
+            if self.opts.max_idle_time_ms is not None:
+                age = _time() - sock_info.last_checkout
+                if age > self.opts.max_idle_time_ms:
+                    sock_info.close()
+                    sock_info, from_pool = self.connect(), False
 
             if from_pool:
                 # Can raise ConnectionFailure.
