@@ -70,7 +70,7 @@ import sys
 import traceback
 
 from collections import namedtuple, Sequence
-from helpers import _handle_exception
+from pymongo.helpers import _handle_exception
 
 _Listeners = namedtuple('Listeners', ('command_listeners',))
 
