@@ -290,6 +290,176 @@ class CommandFailedEvent(_CommandEvent):
         return self.__failure
 
 
+class _ServerDescriptionEvent(object):
+    """Base class for server description events."""
+
+    __slots__ = ("__server_address", "__topology_id")
+
+    def __init__(self, server_address, topology_id):
+        self.__server_address = server_address
+        self.__topology_id = topology_id
+
+    @property
+    def server_address(self):
+        """The address (host/port pair) of the server"""
+        return self.__server_address
+
+    @property
+    def topology_id(self):
+        """A unique identifier for the topology."""
+        return self.__topology_id
+
+
+class ServerDescriptionChangedEvent(_ServerDescriptionEvent):
+    """Published when server description changes, but does NOT include
+    changes to the RTT."""
+
+    __slots__ = ('__previous_description', '__new_description')
+
+    def __init__(self, previous_description, new_description, *args):
+        super(ServerDescriptionChangedEvent, self).__init__(*args)
+        self.__previous_description = previous_description
+        self.__new_description = new_description
+
+    @property
+    def previous_description(self):
+        """The previous server description."""
+        return self.__previous_description
+
+    @property
+    def new_description(self):
+        """The new server description."""
+        return self.__new_description
+
+
+class ServerOpeningEvent(_ServerDescriptionEvent):
+    """Published when server is initialized."""
+
+
+class ServerClosedEvent(_ServerDescriptionEvent):
+    """Published when server is closed."""
+
+
+class _TopologyDescriptionEvent(object):
+    """Base class for topology description events"""
+
+    __slots__ = ('__topology_id')
+
+    def __init__(self, topology_id):
+        self.__topology_id = topology_id
+
+    @property
+    def topology_id(self):
+        """A unique identifier for the topology."""
+        return self.__topology_id
+
+
+class TopologyDescriptionChangedEvent(_TopologyDescriptionEvent):
+    """Published when topology description changes."""
+
+    __slots__ = ('__previous_description', '__new_description')
+
+    def __init__(self, previous_description,  new_description, *args):
+        super(TopologyDescriptionChangedEvent, self).__init__(*args)
+        self.__previous_description = previous_description
+        self.__new_description = new_description
+
+    @property
+    def previous_description(self):
+        """The old topology description."""
+        return self.__previous_description
+
+    @property
+    def new_description(self):
+        """The new topology description."""
+        return self.__new_description
+
+
+class TopologyOpenedEvent(_TopologyDescriptionEvent):
+    """Published when topology is initialized."""
+
+
+class TopologyClosedEvent(_TopologyDescriptionEvent):
+    """Published when topology is closed."""
+
+
+class _ServerHeartbeatEvent(object):
+    """Base class for server heartbeat events"""
+
+    __slots__ = ('__connection_id')
+
+    def __init__(self, connection_id):
+        self.__connection_id = connection_id
+
+    @property
+    def connection_id(self):
+        """Returns the connection id for the command. The connection id is the
+        unique identifier of the driver's Connection object that wraps the
+        socket."""
+        return self.__connection_id
+
+
+class ServerHeartbeatStartedEvent(_ServerHeartbeatEvent):
+    """Fired when the server monitor's ismaster command is started -
+    immediately before the ismaster command is serialized into raw BSON
+    and written to the socket."""
+
+
+class ServerHeartbeatSucceededEvent(_ServerHeartbeatEvent):
+    """Fired when the server monitor's ismaster succeeds."""
+
+    __slots__ = ('__duration', '__reply')
+
+    def __init__(self, duration, reply, *args):
+        super(ServerHeartbeatSucceededEvent, self).__init__(*args)
+        self.__duration = duration
+        self.__reply = reply
+
+    @property
+    def duration(self):
+        """Returns the execution time of the event in the highest possible
+        resolution for the platform. The calculated value MUST be the time to
+        send the message and receive the reply from the server, including BSON
+        serialization and deserialization. The name can imply the units in
+        which the value is returned, i.e. durationMS, durationNanos. The time
+        measurement used MUST be the same measurement used for the RTT
+        calculation."""
+        return self.__duration
+
+    @property
+    def reply(self):
+        """The command reply."""
+        return self.__reply
+
+
+class ServerHeartbeatFailedEvent(_ServerHeartbeatEvent):
+    """Fired when the server monitor's ismaster fails, either with an "ok: 0"
+    or a socket exception."""
+
+    __slots__ = ('__duration', '__reply')
+
+    def __init__(self, duration, reply, *args):
+        super(ServerHeartbeatFailedEvent, self).__init__(*args)
+        self.__duration = duration
+        self.__reply = reply
+
+    @property
+    def duration(self):
+        """Returns the execution time of the event in the highest possible
+        resolution for the platform. The calculated value MUST be the time to
+        send the message and receive the reply from the server, including BSON
+        serialization and deserialization. The name can imply the units in
+        which the value is returned, i.e. durationMS, durationNanos. The time
+        measurement used MUST be the same measurement used for the RTT
+        calculation."""
+        return self.__duration
+
+    @property
+    def reply(self):
+        """The command reply."""
+        return self.__reply
+
+
 class _EventListeners(object):
     """Configure event listeners for a client instance.
 
