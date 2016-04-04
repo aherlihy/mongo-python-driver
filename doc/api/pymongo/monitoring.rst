@@ -16,3 +16,26 @@
    .. autoclass:: CommandFailedEvent
       :members:
       :inherited-members:
+   .. autoclass:: ServerDescriptionChangedEvent
+      :members:
+      :inherited-members:
+   .. autoclass:: ServerOpeningEvent
+      :members:
+      :inherited-members:
+   .. autoclass:: ServerClosedEvent
+      :members:
+   .. autoclass:: TopologyDescriptionChangedEvent
+      :members:
+      :inherited-members: TopologyOpenedEvent
+   .. autoclass::
+      :members:
+      :inherited-members: TopologyClosedEvent
+   .. autoclass::
+      :members:
+      :inherited-members: ServerHeartbeatStartedEvent
+   .. autoclass::
+      :members:
+      :inherited-members: ServerHeartbeatSucceededEvent
+   .. autoclass::
+      :members:
+      :inherited-members: ServerHeartbeatFailedEvent
