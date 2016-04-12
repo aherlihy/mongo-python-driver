@@ -76,32 +76,96 @@ _Listeners = namedtuple('Listeners', ('command_listeners',))
 _LISTENERS = _Listeners([])
 
 
-class CommandListener(object):
-    """Abstract base class for command listeners."""
+class EventListener(object):
+    """Abstract base class for all event listeners. """
+
+
+class BasicEventListener(EventListener):
+    """Abstract base class for listeners that listen for started, succeeded,
+    and failed events. """
 
     def started(self, event):
-        """Abstract method to handle CommandStartedEvent.
+        """Abstract method to handle a "started" event, such as
+        `CommandStartedEvent` or `ServerHeartbeatStartedEvent`.
 
         :Parameters:
-          - `event`: An instance of :class:`CommandStartedEvent`
+          - `event`: An instance of a "started" event.
         """
         raise NotImplementedError
 
     def succeeded(self, event):
-        """Abstract method to handle CommandSucceededEvent.
+        """Abstract method to handle a "succeeded" event, such as
+        `CommandSucceededEvent` or `ServerHeartbeatSuccessfulEvent`.
 
         :Parameters:
-          - `event`: An instance of :class:`CommandSucceededEvent`
+          - `event`: An instance of a "succeeded" event.
         """
         raise NotImplementedError
 
     def failed(self, event):
-        """Abstract method to handle CommandFailedEvent.
+        """Abstract method to handle a "failed" event, such as
+        `CommandFailedEvent` or `ServerHeartbeatFailedEvent`.
 
         :Parameters:
-          - `event`: An instance of :class:`CommandFailedEvent`
+          - `event`: An instance of a "failed" event.
         """
         raise NotImplementedError
+
+
+class ClusterListener(EventListener):
+    """Abstract base class for listeners that listen for "opened", "changed",
+    and "closed" events."""
+
+    def opened(self, event):
+        """Abstract method to handle a "opened" event, such as
+        `ServerOpenedEvent` or `TopologyOpenedEvent`.
+
+        :Parameters:
+          - `event`: An instance of a "opened" event.
+        """
+        raise NotImplementedError
+
+    def description_changed(self, event):
+        """Abstract method to handle a "description changed" event, such as
+        `ServerDescriptionChangedEvent` or `TopologyDescriptionChangedEvent`.
+
+        :Parameters:
+          - `event`: An instance of a "description changed" event.
+        """
+        raise NotImplementedError
+
+    def closed(self, event):
+        """Abstract method to handle a "closed" event, such as
+        `ServerClosedEvent` or `TopologyClosedEvent`.
+
+        :Parameters:
+          - `event`: An instance of a "closed" event.
+        """
+        raise NotImplementedError
+
+
+class CommandListener(BasicEventListener):
+    """Abstract base class for command listeners.
+    Expects `CommandStartedEvent`, `CommandSucceededEvent`,
+    and `CommandFailedEvent`"""
+
+
+class ServerMonitorListener(BasicEventListener):
+    """Abstract base class for server monitoring listeners.
+    Expects `ServerHeartbeatStartedEvent`, `ServerHeartbeatSucceededEvent`,
+    and `ServerHeartbeatFailedEvent`."""
+
+
+class TopologyListener(ClusterListener):
+    """Abstract base class for topology monitoring listeners.
+    Expects `TopologyOpenedEvent`, `TopologyDescriptionChangedEvent`, and
+    `TopologyClosedEvent`."""
+
+
+class ServerDescriptionListener(ClusterListener):
+    """Abstract base class for server listeners.
+    Expects `ServerOpenedEvent`, `ServerDescriptionChangedEvent`, and
+    `ServerClosedEvent`."""
 
 
 def _to_micros(dur):
