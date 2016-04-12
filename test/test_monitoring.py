@@ -39,7 +39,7 @@ class TestCommandMonitoring(unittest.TestCase):
         cls.command_listener = EventListener()
         cls.saved_listeners = monitoring._LISTENERS
         # Don't use any global subscribers.
-        monitoring._LISTENERS = monitoring._Listeners([])
+        monitoring._LISTENERS = monitoring._Listeners([], [], [], [])
         cls.client = single_client(command_listeners=[cls.command_listener])
 
     @classmethod
@@ -1254,14 +1254,14 @@ class TestCommandMonitoring(unittest.TestCase):
             self.assertEqual(started.connection_id, succeeded.connection_id)
 
     def test_sensitive_commands(self):
-        listeners = self.client._command_listeners
+        command_listeners = self.client._command_listeners
 
         self.command_listener.results.clear()
         cmd = SON([("getnonce", 1)])
-        listeners.publish_command_start(
+        command_listeners.publish_command_start(
             cmd, "pymongo_test", 12345, self.client.address)
         delta = datetime.timedelta(milliseconds=100)
-        listeners.publish_command_success(
+        command_listeners.publish_command_success(
             delta, {'nonce': 'e474f4561c5eb40b', 'ok': 1.0},
             "getnonce", 12345, self.client.address)
         results = self.command_listener.results

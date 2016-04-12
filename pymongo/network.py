@@ -41,7 +41,7 @@ _UNPACK_INT = struct.Struct("<i").unpack
 def command(sock, dbname, spec, slave_ok, is_mongos,
             read_preference, codec_options, check=True,
             allowable_errors=None, address=None,
-            check_keys=False, listeners=None, max_bson_size=None,
+            check_keys=False, command_listeners=None, max_bson_size=None,
             read_concern=DEFAULT_READ_CONCERN):
     """Execute a command over the socket, or raise socket.error.
 
@@ -57,7 +57,8 @@ def command(sock, dbname, spec, slave_ok, is_mongos,
       - `allowable_errors`: errors to ignore if `check` is True
       - `address`: the (host, port) of `sock`
       - `check_keys`: if True, check `spec` for invalid keys
-      - `listeners`: An instance of :class:`~pymongo.monitoring.EventListeners`
+      - `command_listeners`: An instance of
+        :class:`~pymongo.monitoring._CommandListeners`
       - `max_bson_size`: The maximum encoded bson size for this server
       - `read_concern`: The read concern for this command.
     """
@@ -71,7 +72,7 @@ def command(sock, dbname, spec, slave_ok, is_mongos,
     if read_concern.level:
         spec['readConcern'] = read_concern.document
 
-    publish = listeners is not None and listeners.enabled_for_commands
+    publish = command_listeners is not None and command_listeners.enabled
     if publish:
         start = datetime.datetime.now()
 
@@ -85,7 +86,8 @@ def command(sock, dbname, spec, slave_ok, is_mongos,
 
     if publish:
         encoding_duration = datetime.datetime.now() - start
-        listeners.publish_command_start(orig, dbname, request_id, address)
+        command_listeners.publish_command_start(orig, dbname, request_id,
+                                                address)
         start = datetime.datetime.now()
 
     try:
@@ -104,12 +106,12 @@ def command(sock, dbname, spec, slave_ok, is_mongos,
                 failure = exc.details
             else:
                 failure = message._convert_exception(exc)
-            listeners.publish_command_failure(
+            command_listeners.publish_command_failure(
                 duration, failure, name, request_id, address)
         raise
     if publish:
         duration = (datetime.datetime.now() - start) + encoding_duration
-        listeners.publish_command_success(
+        command_listeners.publish_command_success(
             duration, response_doc, name, request_id, address)
     return response_doc
 

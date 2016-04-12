@@ -15,10 +15,8 @@
 """Tools to monitor driver events.
 
 Use :func:`register` to register global listeners for specific events.
-Currently only command events are published. Listeners must be
-a subclass of :class:`CommandListener` and implement
-:meth:`~CommandListener.started`, :meth:`~CommandListener.succeeded`, and
-:meth:`~CommandListener.failed`.
+Listeners must inherit from a subclass of :class:`EventListener` and implement
+the correct functions for that class.
 
 For example, a simple command logger might be implemented like this::
 
@@ -42,19 +40,19 @@ For example, a simple command logger might be implemented like this::
         def failed(self, event):
             logging.info("Command {0.command_name} with request id "
                          "{0.request_id} on server {0.connection_id} "
-                         "failed in {0.duration_micros} "
-                         "microseconds".format(event))
+                         "failed in {s".format(event))
 
     monitoring.register(CommandLogger())
 
-Event listeners can also be registered per instance of
+Command listeners can also be registered per instance of
 :class:`~pymongo.mongo_client.MongoClient`::
 
-    client = MongoClient(command_listeners=[CommandLogger()])
+    client = MongoClient(command_listeners=[CommandLogger()],
+                         server_listeners=[ServerLogger()])
 
 Note that previously registered global listeners are automatically included when
-configuring per client event listeners. Registering a new global command_listener will
-not add that command_listener to existing client instances.
+configuring per client event listeners. Registering a new global listener will
+not add that listener to existing client instances.
 
 .. note:: Events are delivered **synchronously**. Application threads block
   waiting for event handlers (e.g. :meth:`~CommandListener.started`) to
@@ -71,9 +69,11 @@ import traceback
 
 from collections import namedtuple, Sequence
 
-_Listeners = namedtuple('Listeners', ('command_listeners',))
+_Listeners = namedtuple('Listeners',
+                        ('command_listeners', 'server_listeners',
+                         'server_heartbeat_listeners', 'topology_listeners'))
 
-_LISTENERS = _Listeners([])
+_LISTENERS = _Listeners([], [], [], [])
 
 
 #TODO: java doesn't share inheritance between command_listener classes. Also renamed Topology to Cluster.
@@ -83,7 +83,7 @@ class EventListener(object):
 
 class BasicEventListener(EventListener):
     """Abstract base class for listeners that listen for started, succeeded,
-    and failed events. """
+    and failed events."""
 
     def started(self, event):
         """Abstract method to handle a "started" event, such as
@@ -151,8 +151,8 @@ class CommandListener(BasicEventListener):
     and `CommandFailedEvent`"""
 
 
-class ServerMonitorListener(BasicEventListener):
-    """Abstract base class for server monitoring listeners.
+class ServerHeartbeatListener(BasicEventListener):
+    """Abstract base class for server heartbeat listeners.
     Expects `ServerHeartbeatStartedEvent`, `ServerHeartbeatSucceededEvent`,
     and `ServerHeartbeatFailedEvent`."""
 
@@ -163,7 +163,7 @@ class TopologyListener(ClusterListener):
     `TopologyClosedEvent`."""
 
 
-class ServerDescriptionListener(ClusterListener):
+class ServerListener(ClusterListener):
     """Abstract base class for server listeners.
     Expects `ServerOpenedEvent`, `ServerDescriptionChangedEvent`, and
     `ServerClosedEvent`."""
@@ -178,24 +178,76 @@ def _to_micros(dur):
 
 
 def _validate_command_listeners(option, listeners):
-    """Validate event listeners"""
+    """Validate command listeners"""
     if not isinstance(listeners, Sequence):
         raise TypeError("%s must be a list or tuple" % (option,))
     for listener in listeners:
         if not isinstance(listener, CommandListener):
-            raise TypeError("Only subclasses of "
-                            "pymongo.monitoring.CommandListener are supported")
+            raise TypeError("Command listeners for %s must be a subclass of "
+                            "CommandListener" % option)
     return listeners
 
 
-def register(listener):
-    """Register a global event command_listener.
+def _validate_server_listeners(option, listeners):
+    """Validate server listeners"""
+    if not isinstance(listeners, Sequence):
+        raise TypeError("%s must be a list or tuple" % (option,))
+    for listener in listeners:
+        if not isinstance(listener, ServerListener):
+            raise TypeError("Server listeners for %s must be a subclass of "
+                            "ServerListener" % option)
+    return listeners
+
+
+def _validate_server_heartbeat_listeners(option, listeners):
+    """Validate server heartbeat listeners"""
+    if not isinstance(listeners, Sequence):
+        raise TypeError("%s must be a list or tuple" % (option,))
+    for listener in listeners:
+        if not isinstance(listener, ServerHeartbeatListener):
+            raise TypeError("Server heartbeat listeners for %s must be a "
+                            "subclass of ServerHeartbeatListener" % option)
+    return listeners
+
+
+def _validate_topology_listeners(option, listeners):
+    """Validate topology listeners"""
+    if not isinstance(listeners, Sequence):
+        raise TypeError("%s must be a list or tuple" % (option,))
+    for listener in listeners:
+        if not isinstance(listener, TopologyListener):
+            raise TypeError("Topology listeners for %s must be a subclass of "
+                            "TopologyListener" % option)
+    return listeners
+
+
+def register(command_listener=None, server_listener=None,
+             server_heartbeat_listener=None, topology_listener=None):
+    """Register a global event listener.
 
     :Parameters:
       - `command_listener`: A subclass of :class:`CommandListener`.
+      - `server_listener`: A subclass of :class:`ServerListener`.
+      - `server_heartbeat_listener`: A subclass of
+         :class:`ServerHeartbeatListener`.
+      - `topology_listener`: A subclass of :class:`TopologyListener`.
     """
-    _validate_command_listeners('command_listener', [listener])
-    _LISTENERS.command_listeners.append(listener)
+    if command_listener is not None:
+        _validate_command_listeners('command_listener', [command_listener])
+        _LISTENERS.command_listeners.append(command_listener)
+
+    if server_listener is not None:
+        _validate_server_listeners('server_listener', [server_listener])
+        _LISTENERS.server_listeners.append(server_listener)
+
+    if server_heartbeat_listener is not None:
+        _validate_server_heartbeat_listeners(
+            'server_heartbeat_listener', [server_heartbeat_listener])
+        _LISTENERS.server_heartbeat_listeners.append(server_heartbeat_listener)
+
+    if topology_listener is not None:
+        _validate_topology_listeners('topology_listener', [topology_listener])
+        _LISTENERS.topology_listeners.append(topology_listener)
 
 
 def _handle_exception():
@@ -537,12 +589,12 @@ class _CommandListeners(object):
         self.__command_listeners = _LISTENERS.command_listeners[:]
         if listeners is not None:
             self.__command_listeners.extend(listeners)
-        self.__enabled_for_commands = bool(self.__command_listeners)
+        self.__enabled = bool(self.__command_listeners)
 
     @property
-    def enabled_for_commands(self):
+    def enabled(self):
         """Are any CommandListener instances registered?"""
-        return self.__enabled_for_commands
+        return self.__enabled
 
     @property
     def command_listeners(self):
@@ -618,5 +670,219 @@ class _CommandListeners(object):
         for subscriber in self.__command_listeners:
             try:
                 subscriber.failed(event)
+            except Exception:
+                _handle_exception()
+
+
+class _ServerHeartbeatListeners(object):
+    """Configure server heartbeat listeners for a client instance.
+
+    Any server heartbeat listeners registered globally are included by default.
+
+    :Parameters:
+      - `listeners`: A list of server heartbeat listeners.
+    """
+    def __init__(self, listeners):
+        self.__server_heartbeat_listeners = _LISTENERS.server_heartbeat_listeners[:]
+        if listeners is not None:
+            self.__server_heartbeat_listeners.extend(listeners)
+        self.__enabled = bool(self.__server_heartbeat_listeners)
+
+    @property
+    def enabled(self):
+        """Are any ServerHeartbeatListener instances registered?"""
+        return self.__enabled
+
+    @property
+    def server_heartbeat_listeners(self):
+        """List of registered server heartbeat listeners."""
+        return self.__server_heartbeat_listeners[:]
+
+    def publish_server_heartbeat_started(self, connection_id):
+        """Publish a ServerHeartbeatStartedEvent to all server heartbeat
+        listeners.
+
+        :Parameters:
+         - `connection_id`: The unique identifier of the driver's Connection
+           object that wraps the socket.
+        """
+        event = ServerHeartbeatStartedEvent(connection_id)
+        for subscriber in self.__server_heartbeat_listeners:
+            try:
+                subscriber.started(event)
+            except Exception:
+                _handle_exception()
+
+    def publish_server_heartbeat_succeeded(self, connection_id, duration,
+                                           reply):
+        """Publish a ServerHeartbeatSucceededEvent to all server heartbeat
+        listeners.
+
+        :Parameters:
+         - `connection_id`: The unique identifier of the driver's Connection
+            object that wraps the socket.
+         - `duration`: The execution time of the event in the highest possible
+            resolution for the platform.
+         - `reply`: The command reply.
+         """
+        event = ServerHeartbeatSucceededEvent(duration, reply, connection_id)
+        for subscriber in self.__server_heartbeat_listeners:
+            try:
+                subscriber.succeeded(event)
+            except Exception:
+                _handle_exception()
+
+    def publish_server_heartbeat_failed(self, connection_id, duration,
+                                           reply):
+        """Publish a ServerHeartbeatFailedEvent to all server heartbeat
+        listeners.
+
+        :Parameters:
+         - `connection_id`: The unique identifier of the driver's Connection
+            object that wraps the socket.
+         - `duration`: The execution time of the event in the highest possible
+            resolution for the platform.
+         - `reply`: The command reply.
+         """
+        event = ServerHeartbeatSucceededEvent(duration, reply, connection_id)
+        for subscriber in self.__server_heartbeat_listeners:
+            try:
+                subscriber.failed(event)
+            except Exception:
+                _handle_exception()
+
+
+class _ServerListeners(object):
+    """Configure server listeners for a client instance.
+
+    Any server listeners registered globally are included by default.
+
+    :Parameters:
+      - `listeners`: A list of server listeners.
+    """
+    def __init__(self, listeners):
+        self.__server_listeners = _LISTENERS.server_listeners[:]
+        if listeners is not None:
+            self.__server_listeners.extend(listeners)
+        self.__enabled = bool(self.__server_listeners)
+
+    @property
+    def enabled(self):
+        """Are any ServerListener instances registered?"""
+        return self.__enabled
+
+    @property
+    def server_listeners(self):
+        """List of registered server listeners."""
+        return self.__server_listeners[:]
+
+    def publish_server_opened(self, server_address, topology_id):
+        """Publish a ServerOpenedEvent to all server listeners.
+
+        :Parameters:
+         - `server_address`: The address (host/port pair) of the server.
+         - `topology_id`: A unique identifier for the topology.
+        """
+        event = ServerOpenedEvent(server_address, topology_id)
+        for subscriber in self.__server_listeners:
+            try:
+                subscriber.opened(event)
+            except Exception:
+                _handle_exception()
+
+    def publish_server_closed(self, server_address, topology_id):
+        """Publish a ServerClosedEvent to all server listeners.
+
+        :Parameters:
+         - `server_address`: The address (host/port pair) of the server.
+         - `topology_id`: A unique identifier for the topology.
+        """
+        event = ServerClosedEvent(server_address, topology_id)
+        for subscriber in self.__server_listeners:
+            try:
+                subscriber.closed(event)
+            except Exception:
+                _handle_exception()
+
+    def publish_server_description_changed(self, previous_description,
+                                           new_description):
+        """Publish a ServerDescriptionChangedEvent to all server listeners.
+
+        :Parameters:
+         - `previous_description`: The previous server description.
+         - `new_description`: The new server description.
+        """
+        event = ServerDescriptionChangedEvent(previous_description,
+                                              new_description)
+        for subscriber in self.__server_listeners:
+            try:
+                subscriber.description_changed(event)
+            except Exception:
+                _handle_exception()
+
+
+class _TopologyListeners(object):
+    """Configure topology listeners for a client instance.
+
+    Any topology listeners registered globally are included by default.
+
+    :Parameters:
+      - `listeners`: A list of topology listeners.
+    """
+    def __init__(self, listeners):
+        self.__topology_listeners = _LISTENERS.topology_listeners[:]
+        if listeners is not None:
+            self.__topology_listeners.extend(listeners)
+        self.__enabled = bool(self.__topology_listeners)
+
+    @property
+    def enabled(self):
+        """Are any TopologyListener instances registered?"""
+        return self.__enabled
+
+    @property
+    def topology_listeners(self):
+        """List of registered topology listeners."""
+        return self.__topology_listeners[:]
+
+    def publish_topology_opened(self, topology_id):
+        """Publish a TopologyOpenedEvent to all topology listeners.
+
+        :Parameters:
+         - `topology_id`: A unique identifier for the topology.
+        """
+        event = TopologyOpenedEvent(topology_id)
+        for subscriber in self.__topology_listeners:
+            try:
+                subscriber.opened(event)
+            except Exception:
+                _handle_exception()
+
+    def publish_topology_closed(self, topology_id):
+        """Publish a TopologyClosedEvent to all topology listeners.
+
+        :Parameters:
+         - `topology_id`: A unique identifier for the topology.
+        """
+        event = TopologyClosedEvent(topology_id)
+        for subscriber in self.__topology_listeners:
+            try:
+                subscriber.closed(event)
+            except Exception:
+                _handle_exception()
+
+    def publish_topology_description_changed(self, previous_description,
+                                             new_description):
+        """Publish a TopologyDescriptionChangedEvent to all topology listeners.
+
+        :Parameters:
+         - `previous_description`: The previous topology description.
+         - `new_description`: The new topology description.
+        """
+        event = TopologyDescriptionChangedEvent(previous_description,
+                                                new_description)
+        for subscriber in self.__topology_listeners:
+            try:
+                subscriber.description_changed(event)
             except Exception:
                 _handle_exception()

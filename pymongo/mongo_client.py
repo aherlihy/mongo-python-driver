@@ -153,6 +153,12 @@ class MongoClient(common.BaseObject):
             keep-alive packets).
           - `command_listeners`: a list or tuple of command listeners. See
             :mod:`~pymongo.monitoring` for details.
+          - `server_listeners`: a list or tuple of server listeners. See
+            :mod:`~pymongo.monitoring` for details.
+          - `server_heartbeat_listeners`: a list or tuple of server heartbeat
+            listeners. See :mod:`~pymongo.monitoring` for details.
+          - `topology_listeners`: a list or tuple of topology listeners. See
+            :mod:`~pymongo.monitoring` for details.
 
           | **Write Concern options:**
           | (Only set if passed. No default values.)
@@ -350,6 +356,9 @@ class MongoClient(common.BaseObject):
         self.__kill_cursors_queue = []
 
         self._command_listeners = options.pool_options.command_listeners
+        self._server_listeners = options.pool_options.server_listeners
+        self._server_heartbeat_listeners = options.pool_options.server_heartbeat_listeners
+        self._topology_listeners = options.pool_options.topology_listeners
 
         # Cache of existing indexes used by ensure_index ops.
         self.__index_cache = {}
@@ -507,6 +516,30 @@ class MongoClient(common.BaseObject):
         See :mod:`~pymongo.monitoring` for details.
         """
         return self._command_listeners.command_listeners
+
+    @property
+    def server_listeners(self):
+        """The server listeners registered for this client.
+
+        See :mod:`~pymongo.monitoring` for details.
+        """
+        return self._server_listeners.server_listeners
+
+    @property
+    def server_heartbeat_listeners(self):
+        """The server heartbeat listeners registered for this client.
+
+        See :mod:`~pymongo.monitoring` for details.
+        """
+        return self._server_heartbeat_listeners.server_heartbeat_listeners
+
+    @property
+    def topology_listeners(self):
+        """The topology listeners registered for this client.
+
+        See :mod:`~pymongo.monitoring` for details.
+        """
+        return self._topology_listeners.topology_listeners
 
     @property
     def address(self):
@@ -954,7 +987,7 @@ class MongoClient(common.BaseObject):
         # Don't re-open topology if it's closed and there's no pending cursors.
         if address_to_cursor_ids:
             command_listeners = self._command_listeners
-            publish = command_listeners.enabled_for_commands
+            publish = command_listeners.enabled
             topology = self._get_topology()
             for address, cursor_ids in address_to_cursor_ids.items():
                 try:

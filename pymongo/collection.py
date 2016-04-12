@@ -443,7 +443,7 @@ class Collection(common.BaseObject):
             raise OperationFailure("Cannot set bypass_document_validation with"
                                    " unacknowledged write concern")
         command_listeners = self.database.client._command_listeners
-        publish = command_listeners.enabled_for_commands
+        publish = command_listeners.enabled
 
         if publish:
             start = datetime.datetime.now()

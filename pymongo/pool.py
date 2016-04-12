@@ -70,13 +70,15 @@ class PoolOptions(object):
     __slots__ = ('__max_pool_size', '__connect_timeout', '__socket_timeout',
                  '__wait_queue_timeout', '__wait_queue_multiple',
                  '__ssl_context', '__ssl_match_hostname', '__socket_keepalive',
-                 '__command_listeners')
+                 '__command_listeners', '__server_listeners',
+                 '__server_heartbeat_listeners', '__topology_listeners')
 
     def __init__(self, max_pool_size=100, connect_timeout=None,
                  socket_timeout=None, wait_queue_timeout=None,
                  wait_queue_multiple=None, ssl_context=None,
                  ssl_match_hostname=True, socket_keepalive=False,
-                 command_listeners=None):
+                 command_listeners=None, server_listeners=None,
+                 server_heartbeat_listeners=None, topology_listeners=None):
 
         self.__max_pool_size = max_pool_size
         self.__connect_timeout = connect_timeout
@@ -87,6 +89,9 @@ class PoolOptions(object):
         self.__ssl_match_hostname = ssl_match_hostname
         self.__socket_keepalive = socket_keepalive
         self.__command_listeners = command_listeners
+        self.__server_listeners = server_listeners
+        self.__server_heartbeat_listeners = server_heartbeat_listeners
+        self.__topology_listeners = topology_listeners
 
     @property
     def max_pool_size(self):
@@ -147,6 +152,24 @@ class PoolOptions(object):
         """
         return self.__command_listeners
 
+    @property
+    def server_listeners(self):
+        """An instance of pymongo.monitoring._ServerListeners.
+        """
+        return self.__server_listeners
+
+    @property
+    def server_heartbeat_listeners(self):
+        """An instance of pymongo.monitoring._ServerHeartbeatListeners.
+        """
+        return self.__server_heartbeat_listeners
+
+    @property
+    def topology_listeners(self):
+        """An instance of pymongo.monitoring._TopologyListeners.
+        """
+        return self.__topology_listeners
+
 
 class SocketInfo(object):
     """Store a socket with some metadata.
@@ -171,7 +194,7 @@ class SocketInfo(object):
         self.max_write_batch_size = (
             ismaster.max_write_batch_size if ismaster else None)
 
-        self.listeners = pool.opts.command_listeners
+        self.command_listeners = pool.opts.command_listeners
 
         if ismaster:
             self.is_mongos = ismaster.server_type == SERVER_TYPE.Mongos
@@ -209,8 +232,8 @@ class SocketInfo(object):
             return command(self.sock, dbname, spec, slave_ok,
                            self.is_mongos, read_preference, codec_options,
                            check, allowable_errors, self.address,
-                           check_keys, self.listeners, self.max_bson_size,
-                           read_concern)
+                           check_keys, self.command_listeners,
+                           self.max_bson_size, read_concern)
         except OperationFailure:
             raise
         # Catch socket.error, KeyboardInterrupt, etc. and close ourselves.

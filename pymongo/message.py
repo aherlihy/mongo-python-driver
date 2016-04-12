@@ -502,16 +502,17 @@ class _BulkWriteContext(object):
     """A wrapper around SocketInfo for use with write splitting functions."""
 
     __slots__ = ('db_name', 'command', 'sock_info', 'op_id',
-                 'name', 'field', 'publish', 'start_time', 'listeners')
+                 'name', 'field', 'publish', 'start_time', 'command_listeners')
 
     def __init__(
-            self, database_name, command, sock_info, operation_id, listeners):
+            self, database_name, command, sock_info, operation_id,
+            command_listeners):
         self.db_name = database_name
         self.command = command
         self.sock_info = sock_info
         self.op_id = operation_id
-        self.listeners = listeners
-        self.publish = listeners.enabled_for_commands
+        self.command_listeners = command_listeners
+        self.publish = command_listeners.enabled
         self.name = next(iter(command))
         self.field = _FIELD_MAP[self.name]
         self.start_time = datetime.datetime.now() if self.publish else None
@@ -587,20 +588,20 @@ class _BulkWriteContext(object):
         """Publish a CommandStartedEvent."""
         cmd = self.command.copy()
         cmd[self.field] = docs
-        self.listeners.publish_command_start(
+        self.command_listeners.publish_command_start(
             cmd, self.db_name,
             request_id, self.sock_info.address, self.op_id)
         return cmd
 
     def _succeed(self, request_id, reply, duration):
         """Publish a CommandSucceededEvent."""
-        self.listeners.publish_command_success(
+        self.command_listeners.publish_command_success(
             duration, reply, self.name,
             request_id, self.sock_info.address, self.op_id)
 
     def _fail(self, request_id, failure, duration):
         """Publish a CommandFailedEvent."""
-        self.listeners.publish_command_failure(
+        self.command_listeners.publish_command_failure(
             duration, failure, self.name,
             request_id, self.sock_info.address, self.op_id)
 

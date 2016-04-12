@@ -834,7 +834,7 @@ class Cursor(object):
         """
         client = self.__collection.database.client
         command_listeners = client._command_listeners
-        publish = command_listeners.enabled_for_commands
+        publish = command_listeners.enabled
         from_command = False
 
         if operation:
