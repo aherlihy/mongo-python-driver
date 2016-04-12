@@ -91,7 +91,7 @@ class CommandCursor(object):
         """Send a getmore message and handle the response.
         """
         client = self.__collection.database.client
-        listeners = client._event_listeners
+        listeners = client._command_listeners
         publish = listeners.enabled_for_commands
         try:
             response = client._send_message_with_response(

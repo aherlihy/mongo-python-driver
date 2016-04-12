@@ -19,7 +19,7 @@
    .. autoclass:: ServerDescriptionChangedEvent
       :members:
       :inherited-members:
-   .. autoclass:: ServerOpeningEvent
+   .. autoclass:: ServerOpenedEvent
       :members:
       :inherited-members:
    .. autoclass:: ServerClosedEvent

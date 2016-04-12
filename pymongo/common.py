@@ -25,7 +25,7 @@ from bson.py3compat import string_type, integer_types, iteritems
 from bson.raw_bson import RawBSONDocument
 from pymongo.auth import MECHANISMS
 from pymongo.errors import ConfigurationError
-from pymongo.monitoring import _validate_event_listeners
+from pymongo.monitoring import _validate_command_listeners
 from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import (read_pref_mode_from_name,
                                       _ServerMode)
@@ -443,7 +443,7 @@ URI_VALIDATORS = {
 KW_VALIDATORS = {
     'document_class': validate_document_class,
     'read_preference': validate_read_preference,
-    'event_listeners': _validate_event_listeners
+    'command_listeners': _validate_command_listeners
 }
 
 VALIDATORS = URI_VALIDATORS.copy()

@@ -284,7 +284,7 @@ class _Bulk(object):
         }
         op_id = _randint()
         db_name = self.collection.database.name
-        listeners = self.collection.database.client._event_listeners
+        command_listeners = self.collection.database.client._command_listeners
 
         for run in generator:
             cmd = SON([(_COMMANDS[run.op_type], self.collection.name),
@@ -294,7 +294,8 @@ class _Bulk(object):
             if self.bypass_doc_val and sock_info.max_wire_version >= 4:
                 cmd['bypassDocumentValidation'] = True
 
-            bwc = _BulkWriteContext(db_name, cmd, sock_info, op_id, listeners)
+            bwc = _BulkWriteContext(db_name, cmd, sock_info, op_id,
+                                    command_listeners)
             results = _do_batched_write_command(
                 self.namespace, run.op_type, cmd,
                 run.ops, True, self.collection.codec_options, bwc)

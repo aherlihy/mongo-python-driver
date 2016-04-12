@@ -36,22 +36,22 @@ class TestCommandMonitoring(unittest.TestCase):
     @classmethod
     @client_context.require_connection
     def setUpClass(cls):
-        cls.listener = EventListener()
+        cls.command_listener = EventListener()
         cls.saved_listeners = monitoring._LISTENERS
         # Don't use any global subscribers.
         monitoring._LISTENERS = monitoring._Listeners([])
-        cls.client = single_client(event_listeners=[cls.listener])
+        cls.client = single_client(command_listeners=[cls.command_listener])
 
     @classmethod
     def tearDownClass(cls):
         monitoring._LISTENERS = cls.saved_listeners
 
     def tearDown(self):
-        self.listener.results.clear()
+        self.command_listener.results.clear()
 
     def test_started_simple(self):
         self.client.pymongo_test.command('ismaster')
-        results = self.listener.results
+        results = self.command_listener.results
         started = results['started'][0]
         succeeded = results['succeeded'][0]
         self.assertEqual(0, len(results['failed']))
@@ -67,7 +67,7 @@ class TestCommandMonitoring(unittest.TestCase):
 
     def test_succeeded_simple(self):
         self.client.pymongo_test.command('ismaster')
-        results = self.listener.results
+        results = self.command_listener.results
         started = results['started'][0]
         succeeded = results['succeeded'][0]
         self.assertEqual(0, len(results['failed']))
@@ -86,7 +86,7 @@ class TestCommandMonitoring(unittest.TestCase):
             self.client.pymongo_test.command('oops!')
         except OperationFailure:
             pass
-        results = self.listener.results
+        results = self.command_listener.results
         started = results['started'][0]
         failed = results['failed'][0]
         self.assertEqual(0, len(results['succeeded']))
@@ -102,7 +102,7 @@ class TestCommandMonitoring(unittest.TestCase):
 
     def test_find_one(self):
         self.client.pymongo_test.test.find_one()
-        results = self.listener.results
+        results = self.command_listener.results
         started = results['started'][0]
         succeeded = results['succeeded'][0]
         self.assertEqual(0, len(results['failed']))
@@ -124,14 +124,14 @@ class TestCommandMonitoring(unittest.TestCase):
     def test_find_and_get_more(self):
         self.client.pymongo_test.test.drop()
         self.client.pymongo_test.test.insert_many([{} for _ in range(10)])
-        self.listener.results.clear()
+        self.command_listener.results.clear()
         cursor = self.client.pymongo_test.test.find(
             projection={'_id': False},
             batch_size=4)
         for _ in range(4):
             next(cursor)
         cursor_id = cursor.cursor_id
-        results = self.listener.results
+        results = self.command_listener.results
         started = results['started'][0]
         succeeded = results['succeeded'][0]
         self.assertEqual(0, len(results['failed']))
@@ -158,12 +158,12 @@ class TestCommandMonitoring(unittest.TestCase):
         self.assertEqual(csr["ns"], "pymongo_test.test")
         self.assertEqual(csr["firstBatch"], [{} for _ in range(4)])
 
-        self.listener.results.clear()
+        self.command_listener.results.clear()
         # Next batch. Exhausting the cursor could cause a getMore
         # that returns id of 0 and no results.
         next(cursor)
         try:
-            results = self.listener.results
+            results = self.command_listener.results
             started = results['started'][0]
             succeeded = results['succeeded'][0]
             self.assertEqual(0, len(results['failed']))
@@ -199,14 +199,14 @@ class TestCommandMonitoring(unittest.TestCase):
                                     ('filter', {})]))])
         self.client.pymongo_test.test.drop()
         self.client.pymongo_test.test.insert_one({})
-        self.listener.results.clear()
+        self.command_listener.results.clear()
         coll = self.client.pymongo_test.test
         # Test that we publish the unwrapped command.
         if self.client.is_mongos and client_context.version.at_least(2, 4, 0):
             coll = coll.with_options(
                 read_preference=ReadPreference.PRIMARY_PREFERRED)
         res = coll.find().explain()
-        results = self.listener.results
+        results = self.command_listener.results
         started = results['started'][0]
         succeeded = results['succeeded'][0]
         self.assertEqual(0, len(results['failed']))
@@ -237,7 +237,7 @@ class TestCommandMonitoring(unittest.TestCase):
                    ('allowPartialResults', True)])
         self.client.pymongo_test.test.drop()
         self.client.pymongo_test.test.insert_many([{'x': i} for i in range(5)])
-        self.listener.results.clear()
+        self.command_listener.results.clear()
         coll = self.client.pymongo_test.test
         # Test that we publish the unwrapped command.
         if self.client.is_mongos and client_context.version.at_least(2, 4, 0):
@@ -254,7 +254,7 @@ class TestCommandMonitoring(unittest.TestCase):
             batch_size=2)
         next(cursor)
         try:
-            results = self.listener.results
+            results = self.command_listener.results
             started = results['started'][0]
             succeeded = results['succeeded'][0]
             self.assertEqual(0, len(results['failed']))
@@ -280,7 +280,7 @@ class TestCommandMonitoring(unittest.TestCase):
         self.client.pymongo_test.test.drop()
         self.client.pymongo_test.test.insert_many(
             [{'x': 1} for _ in range(10)])
-        self.listener.results.clear()
+        self.command_listener.results.clear()
         coll = self.client.pymongo_test.test
         # Test that we publish the unwrapped command.
         if self.client.is_mongos and client_context.version.at_least(2, 4, 0):
@@ -291,7 +291,7 @@ class TestCommandMonitoring(unittest.TestCase):
         for _ in range(4):
             next(cursor)
         cursor_id = cursor.cursor_id
-        results = self.listener.results
+        results = self.command_listener.results
         started = results['started'][0]
         succeeded = results['succeeded'][0]
         self.assertEqual(0, len(results['failed']))
@@ -317,10 +317,10 @@ class TestCommandMonitoring(unittest.TestCase):
                            'firstBatch': [{'x': 1} for _ in range(4)]}
         self.assertEqual(expected_cursor, succeeded.reply.get('cursor'))
 
-        self.listener.results.clear()
+        self.command_listener.results.clear()
         next(cursor)
         try:
-            results = self.listener.results
+            results = self.command_listener.results
             started = results['started'][0]
             succeeded = results['succeeded'][0]
             self.assertEqual(0, len(results['failed']))
@@ -360,7 +360,7 @@ class TestCommandMonitoring(unittest.TestCase):
             next(cursor)
         except Exception:
             pass
-        results = self.listener.results
+        results = self.command_listener.results
         started = results['started'][0]
         self.assertEqual(0, len(results['succeeded']))
         failed = results['failed'][0]
@@ -385,16 +385,16 @@ class TestCommandMonitoring(unittest.TestCase):
     @client_context.require_replica_set
     def test_not_master_error(self):
         address = next(iter(client_context.rs_client.secondaries))
-        client = single_client(*address, event_listeners=[self.listener])
-        # Clear authentication command results from the listener.
+        client = single_client(*address, command_listeners=[self.command_listener])
+        # Clear authentication command results from the command_listener.
         client.admin.command('ismaster')
-        self.listener.results.clear()
+        self.command_listener.results.clear()
         error = None
         try:
             client.pymongo_test.test.find_one_and_delete({})
         except NotMasterError as exc:
             error = exc.errors
-        results = self.listener.results
+        results = self.command_listener.results
         started = results['started'][0]
         failed = results['failed'][0]
         self.assertEqual(0, len(results['succeeded']))
@@ -413,14 +413,14 @@ class TestCommandMonitoring(unittest.TestCase):
     def test_exhaust(self):
         self.client.pymongo_test.test.drop()
         self.client.pymongo_test.test.insert_many([{} for _ in range(10)])
-        self.listener.results.clear()
+        self.command_listener.results.clear()
         cursor = self.client.pymongo_test.test.find(
             projection={'_id': False},
             batch_size=5,
             cursor_type=CursorType.EXHAUST)
         next(cursor)
         cursor_id = cursor.cursor_id
-        results = self.listener.results
+        results = self.command_listener.results
         started = results['started'][0]
         succeeded = results['succeeded'][0]
         self.assertEqual(0, len(results['failed']))
@@ -449,9 +449,9 @@ class TestCommandMonitoring(unittest.TestCase):
             'ok': 1}
         self.assertEqual(expected_result, succeeded.reply)
 
-        self.listener.results.clear()
+        self.command_listener.results.clear()
         tuple(cursor)
-        results = self.listener.results
+        results = self.command_listener.results
         started = results['started'][0]
         succeeded = results['succeeded'][0]
         self.assertEqual(0, len(results['failed']))
@@ -486,10 +486,10 @@ class TestCommandMonitoring(unittest.TestCase):
             cursor = self.client.pymongo_test.test.find().batch_size(5)
             next(cursor)
             cursor_id = cursor.cursor_id
-            self.listener.results.clear()
+            self.command_listener.results.clear()
             cursor.close()
             time.sleep(2)
-            results = self.listener.results
+            results = self.command_listener.results
             started = results['started'][0]
             succeeded = results['succeeded'][0]
             self.assertEqual(0, len(results['failed']))
@@ -516,11 +516,11 @@ class TestCommandMonitoring(unittest.TestCase):
     def test_non_bulk_writes(self):
         coll = self.client.pymongo_test.test
         coll.drop()
-        self.listener.results.clear()
+        self.command_listener.results.clear()
 
         # Implied write concern insert_one
         res = coll.insert_one({'x': 1})
-        results = self.listener.results
+        results = self.command_listener.results
         started = results['started'][0]
         succeeded = results['succeeded'][0]
         self.assertEqual(0, len(results['failed']))
@@ -543,10 +543,10 @@ class TestCommandMonitoring(unittest.TestCase):
         self.assertEqual(1, reply.get('n'))
 
         # Unacknowledged insert_one
-        self.listener.results.clear()
+        self.command_listener.results.clear()
         coll = coll.with_options(write_concern=WriteConcern(w=0))
         res = coll.insert_one({'x': 1})
-        results = self.listener.results
+        results = self.command_listener.results
         started = results['started'][0]
         succeeded = results['succeeded'][0]
         self.assertEqual(0, len(results['failed']))
@@ -568,10 +568,10 @@ class TestCommandMonitoring(unittest.TestCase):
         self.assertEqual(succeeded.reply, {'ok': 1})
 
         # Explicit write concern insert_one
-        self.listener.results.clear()
+        self.command_listener.results.clear()
         coll = coll.with_options(write_concern=WriteConcern(w=1))
         res = coll.insert_one({'x': 1})
-        results = self.listener.results
+        results = self.command_listener.results
         started = results['started'][0]
         succeeded = results['succeeded'][0]
         self.assertEqual(0, len(results['failed']))
@@ -595,9 +595,9 @@ class TestCommandMonitoring(unittest.TestCase):
         self.assertEqual(1, reply.get('n'))
 
         # delete_many
-        self.listener.results.clear()
+        self.command_listener.results.clear()
         res = coll.delete_many({'x': 1})
-        results = self.listener.results
+        results = self.command_listener.results
         started = results['started'][0]
         succeeded = results['succeeded'][0]
         self.assertEqual(0, len(results['failed']))
@@ -622,10 +622,10 @@ class TestCommandMonitoring(unittest.TestCase):
         self.assertEqual(res.deleted_count, reply.get('n'))
 
         # replace_one
-        self.listener.results.clear()
+        self.command_listener.results.clear()
         oid = ObjectId()
         res = coll.replace_one({'_id': oid}, {'_id': oid, 'x': 1}, upsert=True)
-        results = self.listener.results
+        results = self.command_listener.results
         started = results['started'][0]
         succeeded = results['succeeded'][0]
         self.assertEqual(0, len(results['failed']))
@@ -653,9 +653,9 @@ class TestCommandMonitoring(unittest.TestCase):
         self.assertEqual([{'index': 0, '_id': oid}], reply.get('upserted'))
 
         # update_one
-        self.listener.results.clear()
+        self.command_listener.results.clear()
         res = coll.update_one({'x': 1}, {'$inc': {'x': 1}})
-        results = self.listener.results
+        results = self.command_listener.results
         started = results['started'][0]
         succeeded = results['succeeded'][0]
         self.assertEqual(0, len(results['failed']))
@@ -682,9 +682,9 @@ class TestCommandMonitoring(unittest.TestCase):
         self.assertEqual(1, reply.get('n'))
 
         # update_many
-        self.listener.results.clear()
+        self.command_listener.results.clear()
         res = coll.update_many({'x': 2}, {'$inc': {'x': 1}})
-        results = self.listener.results
+        results = self.command_listener.results
         started = results['started'][0]
         succeeded = results['succeeded'][0]
         self.assertEqual(0, len(results['failed']))
@@ -711,9 +711,9 @@ class TestCommandMonitoring(unittest.TestCase):
         self.assertEqual(1, reply.get('n'))
 
         # delete_one
-        self.listener.results.clear()
+        self.command_listener.results.clear()
         res = coll.delete_one({'x': 3})
-        results = self.listener.results
+        results = self.command_listener.results
         started = results['started'][0]
         succeeded = results['succeeded'][0]
         self.assertEqual(0, len(results['failed']))
@@ -742,11 +742,11 @@ class TestCommandMonitoring(unittest.TestCase):
         # write errors
         coll.insert_one({'_id': 1})
         try:
-            self.listener.results.clear()
+            self.command_listener.results.clear()
             coll.insert_one({'_id': 1})
         except OperationFailure:
             pass
-        results = self.listener.results
+        results = self.command_listener.results
         started = results['started'][0]
         succeeded = results['succeeded'][0]
         self.assertEqual(0, len(results['failed']))
@@ -781,11 +781,11 @@ class TestCommandMonitoring(unittest.TestCase):
 
             coll = self.client.pymongo_test.test
             coll.drop()
-            self.listener.results.clear()
+            self.command_listener.results.clear()
 
             # Implied write concern insert
             _id = coll.insert({'x': 1})
-            results = self.listener.results
+            results = self.command_listener.results
             started = results['started'][0]
             succeeded = results['succeeded'][0]
             self.assertEqual(0, len(results['failed']))
@@ -808,9 +808,9 @@ class TestCommandMonitoring(unittest.TestCase):
             self.assertEqual(1, reply.get('n'))
 
             # Unacknowledged insert
-            self.listener.results.clear()
+            self.command_listener.results.clear()
             _id = coll.insert({'x': 1}, w=0)
-            results = self.listener.results
+            results = self.command_listener.results
             started = results['started'][0]
             succeeded = results['succeeded'][0]
             self.assertEqual(0, len(results['failed']))
@@ -832,9 +832,9 @@ class TestCommandMonitoring(unittest.TestCase):
             self.assertEqual(succeeded.reply, {'ok': 1})
 
             # Explicit write concern insert
-            self.listener.results.clear()
+            self.command_listener.results.clear()
             _id = coll.insert({'x': 1}, w=1)
-            results = self.listener.results
+            results = self.command_listener.results
             started = results['started'][0]
             succeeded = results['succeeded'][0]
             self.assertEqual(0, len(results['failed']))
@@ -858,9 +858,9 @@ class TestCommandMonitoring(unittest.TestCase):
             self.assertEqual(1, reply.get('n'))
 
             # remove all
-            self.listener.results.clear()
+            self.command_listener.results.clear()
             res = coll.remove({'x': 1}, w=1)
-            results = self.listener.results
+            results = self.command_listener.results
             started = results['started'][0]
             succeeded = results['succeeded'][0]
             self.assertEqual(0, len(results['failed']))
@@ -885,10 +885,10 @@ class TestCommandMonitoring(unittest.TestCase):
             self.assertEqual(res['n'], reply.get('n'))
 
             # upsert
-            self.listener.results.clear()
+            self.command_listener.results.clear()
             oid = ObjectId()
             coll.update({'_id': oid}, {'_id': oid, 'x': 1}, upsert=True, w=1)
-            results = self.listener.results
+            results = self.command_listener.results
             started = results['started'][0]
             succeeded = results['succeeded'][0]
             self.assertEqual(0, len(results['failed']))
@@ -916,9 +916,9 @@ class TestCommandMonitoring(unittest.TestCase):
             self.assertEqual([{'index': 0, '_id': oid}], reply.get('upserted'))
 
             # update one
-            self.listener.results.clear()
+            self.command_listener.results.clear()
             coll.update({'x': 1}, {'$inc': {'x': 1}})
-            results = self.listener.results
+            results = self.command_listener.results
             started = results['started'][0]
             succeeded = results['succeeded'][0]
             self.assertEqual(0, len(results['failed']))
@@ -944,9 +944,9 @@ class TestCommandMonitoring(unittest.TestCase):
             self.assertEqual(1, reply.get('n'))
 
             # update many
-            self.listener.results.clear()
+            self.command_listener.results.clear()
             coll.update({'x': 2}, {'$inc': {'x': 1}}, multi=True)
-            results = self.listener.results
+            results = self.command_listener.results
             started = results['started'][0]
             succeeded = results['succeeded'][0]
             self.assertEqual(0, len(results['failed']))
@@ -972,9 +972,9 @@ class TestCommandMonitoring(unittest.TestCase):
             self.assertEqual(1, reply.get('n'))
 
             # remove one
-            self.listener.results.clear()
+            self.command_listener.results.clear()
             coll.remove({'x': 3}, multi=False)
-            results = self.listener.results
+            results = self.command_listener.results
             started = results['started'][0]
             succeeded = results['succeeded'][0]
             self.assertEqual(0, len(results['failed']))
@@ -1003,12 +1003,12 @@ class TestCommandMonitoring(unittest.TestCase):
         # This always uses the bulk API.
         coll = self.client.pymongo_test.test
         coll.drop()
-        self.listener.results.clear()
+        self.command_listener.results.clear()
 
         big = 'x' * (1024 * 1024 * 4)
         docs = [{'_id': i, 'big': big} for i in range(6)]
         coll.insert_many(docs)
-        results = self.listener.results
+        results = self.command_listener.results
         started = results['started']
         succeeded = results['succeeded']
         self.assertEqual(0, len(results['failed']))
@@ -1048,13 +1048,13 @@ class TestCommandMonitoring(unittest.TestCase):
 
             coll = self.client.pymongo_test.test
             coll.drop()
-            self.listener.results.clear()
+            self.command_listener.results.clear()
 
             # Force two batches on legacy servers.
             big = 'x' * (1024 * 1024 * 12)
             docs = [{'_id': i, 'big': big} for i in range(6)]
             coll.insert(docs)
-            results = self.listener.results
+            results = self.command_listener.results
             started = results['started']
             succeeded = results['succeeded']
             self.assertEqual(0, len(results['failed']))
@@ -1090,12 +1090,12 @@ class TestCommandMonitoring(unittest.TestCase):
     def test_bulk_write(self):
         coll = self.client.pymongo_test.test
         coll.drop()
-        self.listener.results.clear()
+        self.command_listener.results.clear()
 
         coll.bulk_write([InsertOne({'_id': 1}),
                          UpdateOne({'_id': 1}, {'$set': {'x': 1}}),
                          DeleteOne({'_id': 1})])
-        results = self.listener.results
+        results = self.command_listener.results
         started = results['started']
         succeeded = results['succeeded']
         self.assertEqual(0, len(results['failed']))
@@ -1135,7 +1135,7 @@ class TestCommandMonitoring(unittest.TestCase):
     def test_write_errors(self):
         coll = self.client.pymongo_test.test
         coll.drop()
-        self.listener.results.clear()
+        self.command_listener.results.clear()
 
         try:
             coll.bulk_write([InsertOne({'_id': 1}),
@@ -1145,7 +1145,7 @@ class TestCommandMonitoring(unittest.TestCase):
                             ordered=False)
         except OperationFailure:
             pass
-        results = self.listener.results
+        results = self.command_listener.results
         started = results['started']
         succeeded = results['succeeded']
         self.assertEqual(0, len(results['failed']))
@@ -1175,9 +1175,9 @@ class TestCommandMonitoring(unittest.TestCase):
     def test_first_batch_helper(self):
         # Regardless of server version and use of helpers._first_batch
         # this test should still pass.
-        self.listener.results.clear()
+        self.command_listener.results.clear()
         self.client.pymongo_test.collection_names()
-        results = self.listener.results
+        results = self.command_listener.results
         started = results['started'][0]
         succeeded = results['succeeded'][0]
         self.assertEqual(0, len(results['failed']))
@@ -1194,7 +1194,7 @@ class TestCommandMonitoring(unittest.TestCase):
         self.assertEqual(started.request_id, succeeded.request_id)
         self.assertEqual(started.connection_id, succeeded.connection_id)
 
-        self.listener.results.clear()
+        self.command_listener.results.clear()
         tuple(self.client.pymongo_test.test.list_indexes())
         started = results['started'][0]
         succeeded = results['succeeded'][0]
@@ -1212,7 +1212,7 @@ class TestCommandMonitoring(unittest.TestCase):
         self.assertEqual(started.request_id, succeeded.request_id)
         self.assertEqual(started.connection_id, succeeded.connection_id)
 
-        self.listener.results.clear()
+        self.command_listener.results.clear()
         self.client.pymongo_test.current_op(True)
         started = results['started'][0]
         succeeded = results['succeeded'][0]
@@ -1232,7 +1232,7 @@ class TestCommandMonitoring(unittest.TestCase):
 
         if not client_context.is_mongos:
             self.client.fsync(lock=True)
-            self.listener.results.clear()
+            self.command_listener.results.clear()
             self.client.unlock()
             # Wait for async unlock...
             wait_until(
@@ -1254,9 +1254,9 @@ class TestCommandMonitoring(unittest.TestCase):
             self.assertEqual(started.connection_id, succeeded.connection_id)
 
     def test_sensitive_commands(self):
-        listeners = self.client._event_listeners
+        listeners = self.client._command_listeners
 
-        self.listener.results.clear()
+        self.command_listener.results.clear()
         cmd = SON([("getnonce", 1)])
         listeners.publish_command_start(
             cmd, "pymongo_test", 12345, self.client.address)
@@ -1264,7 +1264,7 @@ class TestCommandMonitoring(unittest.TestCase):
         listeners.publish_command_success(
             delta, {'nonce': 'e474f4561c5eb40b', 'ok': 1.0},
             "getnonce", 12345, self.client.address)
-        results = self.listener.results
+        results = self.command_listener.results
         started = results['started'][0]
         succeeded = results['succeeded'][0]
         self.assertEqual(0, len(results['failed']))

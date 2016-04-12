@@ -230,7 +230,7 @@ class TestCursor(IntegrationTest):
         saved_listeners = monitoring._LISTENERS
         monitoring._LISTENERS = monitoring._Listeners([])
         coll = single_client(
-            event_listeners=[listener])[self.db.name].pymongo_test
+            command_listeners=[listener])[self.db.name].pymongo_test
         results = listener.results
 
         try:

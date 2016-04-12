@@ -70,13 +70,13 @@ class PoolOptions(object):
     __slots__ = ('__max_pool_size', '__connect_timeout', '__socket_timeout',
                  '__wait_queue_timeout', '__wait_queue_multiple',
                  '__ssl_context', '__ssl_match_hostname', '__socket_keepalive',
-                 '__event_listeners')
+                 '__command_listeners')
 
     def __init__(self, max_pool_size=100, connect_timeout=None,
                  socket_timeout=None, wait_queue_timeout=None,
                  wait_queue_multiple=None, ssl_context=None,
                  ssl_match_hostname=True, socket_keepalive=False,
-                 event_listeners=None):
+                 command_listeners=None):
 
         self.__max_pool_size = max_pool_size
         self.__connect_timeout = connect_timeout
@@ -86,7 +86,7 @@ class PoolOptions(object):
         self.__ssl_context = ssl_context
         self.__ssl_match_hostname = ssl_match_hostname
         self.__socket_keepalive = socket_keepalive
-        self.__event_listeners = event_listeners
+        self.__command_listeners = command_listeners
 
     @property
     def max_pool_size(self):
@@ -142,10 +142,10 @@ class PoolOptions(object):
         return self.__socket_keepalive
 
     @property
-    def event_listeners(self):
-        """An instance of pymongo.monitoring._EventListeners.
+    def command_listeners(self):
+        """An instance of pymongo.monitoring._CommandListeners.
         """
-        return self.__event_listeners
+        return self.__command_listeners
 
 
 class SocketInfo(object):
@@ -171,7 +171,7 @@ class SocketInfo(object):
         self.max_write_batch_size = (
             ismaster.max_write_batch_size if ismaster else None)
 
-        self.listeners = pool.opts.event_listeners
+        self.listeners = pool.opts.command_listeners
 
         if ismaster:
             self.is_mongos = ismaster.server_type == SERVER_TYPE.Mongos

@@ -34,7 +34,7 @@ class TestReadConcern(unittest.TestCase):
         cls.saved_listeners = monitoring._LISTENERS
         # Don't use any global subscribers.
         monitoring._LISTENERS = monitoring._Listeners([])
-        cls.client = single_client(event_listeners=[cls.listener])
+        cls.client = single_client(command_listeners=[cls.listener])
         cls.db = cls.client.pymongo_test
 
     @classmethod

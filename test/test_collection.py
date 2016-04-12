@@ -1996,14 +1996,14 @@ class TestCollection(IntegrationTest):
         listener = EventListener()
         saved_listeners = monitoring._LISTENERS
         monitoring._LISTENERS = monitoring._Listeners([])
-        db = single_client(event_listeners=[listener])[self.db.name]
+        db = single_client(command_listeners=[listener])[self.db.name]
         # non-default WriteConcern.
         c_w0 = db.get_collection(
             'test', write_concern=WriteConcern(w=0))
         # default WriteConcern.
         c_default = db.get_collection('test', write_concern=WriteConcern())
         results = listener.results
-        # Authenticate the client and throw out auth commands from the listener.
+        # Authenticate the client and throw out auth commands from the command_listener.
         db.command('ismaster')
         results.clear()
         try:

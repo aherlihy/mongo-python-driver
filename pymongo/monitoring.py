@@ -50,11 +50,11 @@ For example, a simple command logger might be implemented like this::
 Event listeners can also be registered per instance of
 :class:`~pymongo.mongo_client.MongoClient`::
 
-    client = MongoClient(event_listeners=[CommandLogger()])
+    client = MongoClient(command_listeners=[CommandLogger()])
 
 Note that previously registered global listeners are automatically included when
-configuring per client event listeners. Registering a new global listener will
-not add that listener to existing client instances.
+configuring per client event listeners. Registering a new global command_listener will
+not add that command_listener to existing client instances.
 
 .. note:: Events are delivered **synchronously**. Application threads block
   waiting for event handlers (e.g. :meth:`~CommandListener.started`) to
@@ -76,6 +76,7 @@ _Listeners = namedtuple('Listeners', ('command_listeners',))
 _LISTENERS = _Listeners([])
 
 
+#TODO: java doesn't share inheritance between command_listener classes. Also renamed Topology to Cluster.
 class EventListener(object):
     """Abstract base class for all event listeners. """
 
@@ -176,7 +177,7 @@ def _to_micros(dur):
     return dur.microseconds + (dur.seconds + dur.days * 24 * 3600) * 1000000
 
 
-def _validate_event_listeners(option, listeners):
+def _validate_command_listeners(option, listeners):
     """Validate event listeners"""
     if not isinstance(listeners, Sequence):
         raise TypeError("%s must be a list or tuple" % (option,))
@@ -188,12 +189,12 @@ def _validate_event_listeners(option, listeners):
 
 
 def register(listener):
-    """Register a global event listener.
+    """Register a global event command_listener.
 
     :Parameters:
-      - `listener`: A subclass of :class:`CommandListener`.
+      - `command_listener`: A subclass of :class:`CommandListener`.
     """
-    _validate_event_listeners('listener', [listener])
+    _validate_command_listeners('command_listener', [listener])
     _LISTENERS.command_listeners.append(listener)
 
 
@@ -396,7 +397,7 @@ class ServerDescriptionChangedEvent(_ServerDescriptionEvent):
         return self.__new_description
 
 
-class ServerOpeningEvent(_ServerDescriptionEvent):
+class ServerOpenedEvent(_ServerDescriptionEvent):
     """Published when server is initialized."""
 
 
@@ -524,13 +525,13 @@ class ServerHeartbeatFailedEvent(_ServerHeartbeatEvent):
         return self.__reply
 
 
-class _EventListeners(object):
-    """Configure event listeners for a client instance.
+class _CommandListeners(object):
+    """Configure command listeners for a client instance.
 
-    Any event listeners registered globally are included by default.
+    Any command listeners registered globally are included by default.
 
     :Parameters:
-      - `listeners`: A list of event listeners.
+      - `listeners`: A list of command listeners.
     """
     def __init__(self, listeners):
         self.__command_listeners = _LISTENERS.command_listeners[:]
@@ -544,8 +545,8 @@ class _EventListeners(object):
         return self.__enabled_for_commands
 
     @property
-    def event_listeners(self):
-        """List of registered event listeners."""
+    def command_listeners(self):
+        """List of registered command listeners."""
         return self.__command_listeners[:]
 
     def publish_command_start(self, command, database_name,
