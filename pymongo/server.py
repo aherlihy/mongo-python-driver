@@ -30,6 +30,7 @@ class Server(object):
         self._description = server_description
         self._pool = pool
         self._monitor = monitor
+        self._server_listener = self._pool.opts._server_listener
 
     def open(self):
         """Start monitoring, or restart after a fork.
@@ -47,6 +48,7 @@ class Server(object):
 
         Reconnect with open().
         """
+        # TODO: (CERTAIN) self._server_listener.publish ServerClosedEvent(address, ?topology_id)
         self._monitor.close()
         self._pool.reset()
 
@@ -158,6 +160,7 @@ class Server(object):
 
     @description.setter
     def description(self, server_description):
+        # TODO: publish ServerDescriptionChangedEvent(old=self.description, new=server_description)
         assert server_description.address == self._description.address
         self._description = server_description
 

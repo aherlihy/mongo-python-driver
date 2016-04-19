@@ -38,6 +38,7 @@ from pymongo.server_selectors import (any_server_selector,
 class Topology(object):
     """Monitor a topology of one or more servers."""
     def __init__(self, topology_settings):
+        # TODO: (CERTAIN) publish client.topology_listener.TopologyOpeningEvent(?topology_id) --> must be first
         self._settings = topology_settings
         topology_description = TopologyDescription(
             topology_settings.get_topology_type(),
@@ -77,6 +78,7 @@ class Topology(object):
                         "See PyMongo's documentation for details: http://api."
                         "mongodb.org/python/current/faq.html#using-pymongo-"
                         "with-multiprocessing>")
+
 
             self._ensure_opened()
 
@@ -175,6 +177,8 @@ class Topology(object):
             if self._description.has_server(server_description.address):
                 self._description = updated_topology_description(
                     self._description, server_description)
+                #TODO:  self.server_listener.publish ServerDescriptionChangedEvent(old=server_description, new=self._description, server_description.address, ?topology_id)
+                # TODO: ??? MAYBE TOPOLOGY CHANGED??
 
                 self._update_servers()
 
@@ -273,6 +277,7 @@ class Topology(object):
 
         Hold the lock when calling this.
         """
+
         if not self._opened:
             self._opened = True
             self._update_servers()
@@ -340,10 +345,10 @@ class Topology(object):
                 server = Server(
                     server_description=sd,
                     pool=self._create_pool_for_server(address),
-                    monitor=monitor)
+                    monitor=monitor) #TODO: will this trigger ServerDescriptionChangedEvent/do we want it to?
 
                 self._servers[address] = server
-                server.open()
+                server.open() # TODO: not good for ServerOpeningEvent because after Monitor has been created/socket opened
             else:
                 self._servers[address].description = sd
 

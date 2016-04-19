@@ -165,6 +165,7 @@ def updated_topology_description(topology_description, server_description):
     Called after attempting (successfully or not) to call ismaster on the
     server at server_description.address. Does not modify topology_description.
     """
+    # TODO: publish TopologyDescriptionChangedEvent(old=topology_description, new=TORET)
     address = server_description.address
 
     # These values will be updated, if necessary, to form the new

@@ -44,6 +44,7 @@ class Monitor(object):
         self._pool = pool
         self._settings = topology_settings
         self._avg_round_trip_time = MovingAverage()
+        self._server_heartbeat_listener = self._pool.server_heartbeat_listener
 
         # We strongly reference the executor and it weakly references us via
         # this closure. When the monitor is freed, stop the executor soon.
@@ -118,6 +119,7 @@ class Monitor(object):
             self._topology.reset_pool(address)
             default = ServerDescription(address, error=error)
             if not retry:
+                # TODO: (CERTAIN) self._server_heartbeat_listeners.publish ServerHeartbeatFailedEvent(round_trip_time, exc, ?connection_id)
                 self._avg_round_trip_time.reset()
                 # Server type defaults to Unknown.
                 return default
@@ -128,6 +130,7 @@ class Monitor(object):
             except ReferenceError:
                 raise
             except Exception:
+                # TODO: (CERTAIN) self._server_heartbeat_listeners.publish ServerHeartbeatFailedEvent(round_trip_time, exc, ?connection_id)
                 self._avg_round_trip_time.reset()
                 return default
 
@@ -143,6 +146,7 @@ class Monitor(object):
                 address=self._server_description.address,
                 ismaster=response,
                 round_trip_time=self._avg_round_trip_time.get())
+            #TODO: (CERTAIN) self._server_heartbeat_listeners.publish ServerHeartbeatSucceededEvent(round_trip_time, ?connection_id)
 
             return sd
 
@@ -155,7 +159,7 @@ class Monitor(object):
         request_id, msg, max_doc_size = message.query(
             0, 'admin.$cmd', 0, -1, {'ismaster': 1},
             None, DEFAULT_CODEC_OPTIONS)
-
+        # TODO: (CERTAIN) self._pool.listeners.publish ServerHeartbeatStartedEvent(?connection_id)
         # TODO: use sock_info.command()
         sock_info.send_message(msg, max_doc_size)
         raw_response = sock_info.receive_message(1, request_id)

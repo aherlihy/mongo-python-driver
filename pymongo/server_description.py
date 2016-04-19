@@ -62,6 +62,7 @@ class ServerDescription(object):
         self._round_trip_time = round_trip_time
         self._me = ismaster.me
         self._error = error
+        # TODO: publish ServerOpeningEvent(server_address, ?topology_id)
 
     @property
     def address(self):
