@@ -34,7 +34,8 @@ class TopologyDescription(object):
             server_descriptions,
             replica_set_name,
             max_set_version,
-            max_election_id):
+            max_election_id,
+            topology_listeners):
         """Represent a topology of servers.
 
         :Parameters:
@@ -50,6 +51,8 @@ class TopologyDescription(object):
         self._server_descriptions = server_descriptions
         self._max_set_version = max_set_version
         self._max_election_id = max_election_id
+        self._topology_listeners = topology_listeners
+        self._publish_topology = self._topology_listeners is not None and self._topology_listeners.enabled # TODO: check if None?
 
         # Is PyMongo compatible with all servers' wire protocols?
         self._incompatible_err = None
@@ -106,12 +109,14 @@ class TopologyDescription(object):
         sds = dict((address, ServerDescription(address))
                    for address in self._server_descriptions)
 
+        # TODO: publish TopologyDescriptionChanged???
         return TopologyDescription(
             topology_type,
             sds,
             self._replica_set_name,
             self._max_set_version,
-            self._max_election_id)
+            self._max_election_id,
+            self._topology_listeners)
 
     def server_descriptions(self):
         """Dict of (address, ServerDescription)."""
@@ -165,7 +170,6 @@ def updated_topology_description(topology_description, server_description):
     Called after attempting (successfully or not) to call ismaster on the
     server at server_description.address. Does not modify topology_description.
     """
-    # TODO: publish TopologyDescriptionChangedEvent(old=topology_description, new=TORET)
     address = server_description.address
 
     # These values will be updated, if necessary, to form the new
@@ -184,12 +188,14 @@ def updated_topology_description(topology_description, server_description):
 
     if topology_type == TOPOLOGY_TYPE.Single:
         # Single type never changes.
+        # TODO: don't publish TopologyDescriptionChanged here?
         return TopologyDescription(
             TOPOLOGY_TYPE.Single,
             sds,
             set_name,
             max_set_version,
-            max_election_id)
+            max_election_id,
+            topology_description._topology_listeners)
 
     if topology_type == TOPOLOGY_TYPE.Unknown:
         if server_type == SERVER_TYPE.Standalone:
@@ -250,11 +256,17 @@ def updated_topology_description(topology_description, server_description):
             topology_type = _check_has_primary(sds)
 
     # Return updated copy.
-    return TopologyDescription(topology_type,
-                               sds,
-                               set_name,
-                               max_set_version,
-                               max_election_id)
+    new_description =  TopologyDescription(topology_type,
+                                           sds,
+                                           set_name,
+                                           max_set_version,
+                                           max_election_id,
+                                           topology_description._topology_listeners)
+
+    if topology_description._publish_topology: # TODO: where to access listeners from?
+        topology_description._topology_listeners.publish_topology_description_changed(topology_description, new_description, 0) # TODO: get topology_id
+    return new_description
+
 
 
 def _update_rs_from_primary(

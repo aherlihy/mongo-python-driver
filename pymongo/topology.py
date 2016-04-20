@@ -38,14 +38,19 @@ from pymongo.server_selectors import (any_server_selector,
 class Topology(object):
     """Monitor a topology of one or more servers."""
     def __init__(self, topology_settings):
-        # TODO: (CERTAIN) publish client.topology_listener.TopologyOpeningEvent(?topology_id) --> must be first
+        self._topology_listeners = topology_settings._pool_options.topology_listeners
+        self._publish_topology = self._topology_listeners is not None and self._topology_listeners.enabled
+        # TopologyOpenedEvent must be published before Monitor is created.
+        if self._publish_topology:
+            self._topology_listeners.publish_topology_opened(id(self)) # TODO: only unique to class lifetime, better thing to use?
         self._settings = topology_settings
         topology_description = TopologyDescription(
             topology_settings.get_topology_type(),
             topology_settings.get_server_descriptions(),
             topology_settings.replica_set_name,
             None,
-            None)
+            None,
+            topology_settings._pool_options.topology_listeners)
 
         self._description = topology_description
         # Store the seed list to help diagnose errors in _error_message().
@@ -267,6 +272,8 @@ class Topology(object):
             # Mark all servers Unknown.
             self._description = self._description.reset()
             self._update_servers()
+            if self._publish_topology:
+                self._topology_listeners.publish_topology_closed(id(self)) # TODO id not unique
 
     @property
     def description(self):

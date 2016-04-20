@@ -45,7 +45,7 @@ class Monitor(object):
         self._settings = topology_settings
         self._avg_round_trip_time = MovingAverage()
         self._server_heartbeat_listener = self._settings._pool_options.server_heartbeat_listeners
-        self._publish_heartbeat = self._server_heartbeat_listener is not None and self._server_heartbeat_listener.enabled
+        self._publish_heartbeat = self._server_heartbeat_listener is not None and self._server_heartbeat_listener.enabled #TODO: check if none or not?
 
         # We strongly reference the executor and it weakly references us via
         # this closure. When the monitor is freed, stop the executor soon.

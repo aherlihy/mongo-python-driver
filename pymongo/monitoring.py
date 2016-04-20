@@ -76,7 +76,6 @@ _Listeners = namedtuple('Listeners',
 _LISTENERS = _Listeners([], [], [], [])
 
 
-#TODO: java doesn't share inheritance between command_listener classes. Also renamed Topology to Cluster.
 class EventListener(object):
     """Abstract base class for all event listeners. """
 
@@ -805,15 +804,16 @@ class _ServerListeners(object):
                 _handle_exception()
 
     def publish_server_description_changed(self, previous_description,
-                                           new_description):
+                                           new_description, topology_id):
         """Publish a ServerDescriptionChangedEvent to all server listeners.
 
         :Parameters:
          - `previous_description`: The previous server description.
          - `new_description`: The new server description.
+         - `topology_id`: A unique identifier for the topology.
         """
         event = ServerDescriptionChangedEvent(previous_description,
-                                              new_description)
+                                              new_description, topology_id)
         for subscriber in self.__server_listeners:
             try:
                 subscriber.description_changed(event)
@@ -872,15 +872,16 @@ class _TopologyListeners(object):
                 _handle_exception()
 
     def publish_topology_description_changed(self, previous_description,
-                                             new_description):
+                                             new_description, topology_id):
         """Publish a TopologyDescriptionChangedEvent to all topology listeners.
 
         :Parameters:
          - `previous_description`: The previous topology description.
          - `new_description`: The new topology description.
+         - `topology_id`: A unique identifier for the topology.
         """
         event = TopologyDescriptionChangedEvent(previous_description,
-                                                new_description)
+                                                new_description, topology_id)
         for subscriber in self.__topology_listeners:
             try:
                 subscriber.description_changed(event)
