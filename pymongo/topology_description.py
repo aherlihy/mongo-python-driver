@@ -55,7 +55,6 @@ class TopologyDescription(object):
         self._max_set_version = max_set_version
         self._max_election_id = max_election_id
         self._topology_listeners = topology_listeners
-        self._publish_topology = self._topology_listeners is not None and self._topology_listeners.enabled # TODO: check if None?
         self._server_listeners = server_listeners
 
         # Is PyMongo compatible with all servers' wire protocols?
@@ -270,7 +269,7 @@ def updated_topology_description(topology_description, server_description):
                                            topology_description._topology_listeners,
                                            topology_description._server_listeners)
 
-    if topology_description._publish_topology: # TODO: where to access listeners from?
+    if topology_description._topology_listeners is not None and topology_description._topology_listeners.enabled:
         topology_description._topology_listeners.publish_topology_description_changed(topology_description, new_description, 0) # TODO: get topology_id
     return new_description
 

@@ -26,6 +26,7 @@ class ServerDescription(object):
       - `ismaster`: Optional IsMaster instance
       - `round_trip_time`: Optional float
       - `error`: Optional, the last error attempting to connect to the server
+      - `server_listeners`: Optional, the event listeners for servers
     """
 
     __slots__ = (

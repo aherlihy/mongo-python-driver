@@ -39,11 +39,10 @@ class Topology(object):
     """Monitor a topology of one or more servers."""
     def __init__(self, topology_settings):
         self._topology_listeners = topology_settings._pool_options.topology_listeners
-        self._publish_topology = self._topology_listeners is not None and self._topology_listeners.enabled
         self._server_listeners = topology_settings._pool_options.server_listeners
         # TopologyOpenedEvent must be published before Monitor is created.
-        if self._publish_topology:
-            self._topology_listeners.publish_topology_opened(id(self)) # TODO: only unique to class lifetime, better thing to use?
+        if self._topology_listeners is not None and self._topology_listeners.enabled:
+            self._topology_listeners.publish_topology_opened(0) # TODO: topology_id
         self._settings = topology_settings
         topology_description = TopologyDescription(
             topology_settings.get_topology_type(),
@@ -51,8 +50,8 @@ class Topology(object):
             topology_settings.replica_set_name,
             None,
             None,
-            topology_settings._pool_options.topology_listeners,
-            topology_settings._pool_options.server_listeners)
+            self._topology_listeners,
+            self._server_listeners)
 
         self._description = topology_description
         # Store the seed list to help diagnose errors in _error_message().
@@ -272,8 +271,8 @@ class Topology(object):
             # Mark all servers Unknown.
             self._description = self._description.reset()
             self._update_servers()
-            if self._publish_topology:
-                self._topology_listeners.publish_topology_closed(id(self)) # TODO id not unique
+            if self._topology_listeners is not None and self._topology_listeners.enabled:
+                self._topology_listeners.publish_topology_closed(0) # TODO: topology_id
 
     @property
     def description(self):
