@@ -30,7 +30,6 @@ class Server(object):
         self._description = server_description
         self._pool = pool
         self._monitor = monitor
-        self._server_listener = self._pool.opts._server_listener
 
     def open(self):
         """Start monitoring, or restart after a fork.
