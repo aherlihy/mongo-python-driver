@@ -35,7 +35,8 @@ class TopologyDescription(object):
             replica_set_name,
             max_set_version,
             max_election_id,
-            topology_listeners):
+            topology_listeners,
+            server_listeners):
         """Represent a topology of servers.
 
         :Parameters:
@@ -45,6 +46,8 @@ class TopologyDescription(object):
           - `replica_set_name`: replica set name or None
           - `max_set_version`: greatest setVersion seen from a primary, or None
           - `max_election_id`: greatest electionId seen from a primary, or None
+          - `topology_listeners`: the event listeners for topology, or None
+          - `server_listeners`: the event listeners for server, or None
         """
         self._topology_type = topology_type
         self._replica_set_name = replica_set_name
@@ -53,6 +56,7 @@ class TopologyDescription(object):
         self._max_election_id = max_election_id
         self._topology_listeners = topology_listeners
         self._publish_topology = self._topology_listeners is not None and self._topology_listeners.enabled # TODO: check if None?
+        self._server_listeners = server_listeners
 
         # Is PyMongo compatible with all servers' wire protocols?
         self._incompatible_err = None
@@ -96,7 +100,7 @@ class TopologyDescription(object):
 
     def reset_server(self, address):
         """A copy of this description, with one server marked Unknown."""
-        return updated_topology_description(self, ServerDescription(address))
+        return updated_topology_description(self, ServerDescription(address, server_listeners=self._server_listeners))
 
     def reset(self):
         """A copy of this description, with all servers marked Unknown."""
@@ -106,7 +110,7 @@ class TopologyDescription(object):
             topology_type = self._topology_type
 
         # The default ServerDescription's type is Unknown.
-        sds = dict((address, ServerDescription(address))
+        sds = dict((address, ServerDescription(address, server_listeners=self._server_listeners))
                    for address in self._server_descriptions)
 
         # TODO: publish TopologyDescriptionChanged???
@@ -116,7 +120,8 @@ class TopologyDescription(object):
             self._replica_set_name,
             self._max_set_version,
             self._max_election_id,
-            self._topology_listeners)
+            self._topology_listeners,
+            self._server_listeners)
 
     def server_descriptions(self):
         """Dict of (address, ServerDescription)."""
@@ -195,7 +200,8 @@ def updated_topology_description(topology_description, server_description):
             set_name,
             max_set_version,
             max_election_id,
-            topology_description._topology_listeners)
+            topology_description._topology_listeners,
+            topology_description._server_listeners)
 
     if topology_type == TOPOLOGY_TYPE.Unknown:
         if server_type == SERVER_TYPE.Standalone:
@@ -261,7 +267,8 @@ def updated_topology_description(topology_description, server_description):
                                            set_name,
                                            max_set_version,
                                            max_election_id,
-                                           topology_description._topology_listeners)
+                                           topology_description._topology_listeners,
+                                           topology_description._server_listeners)
 
     if topology_description._publish_topology: # TODO: where to access listeners from?
         topology_description._topology_listeners.publish_topology_description_changed(topology_description, new_description, 0) # TODO: get topology_id
@@ -303,7 +310,7 @@ def _update_rs_from_primary(
 
             # Stale primary, set to type Unknown.
             address = server_description.address
-            sds[address] = ServerDescription(address)
+            sds[address] = ServerDescription(address, server_listeners=server_description.server_listeners)
             return (_check_has_primary(sds),
                     replica_set_name,
                     max_set_version,
@@ -331,7 +338,7 @@ def _update_rs_from_primary(
     # Discover new hosts from this primary's response.
     for new_address in server_description.all_hosts:
         if new_address not in sds:
-            sds[new_address] = ServerDescription(new_address)
+            sds[new_address] = ServerDescription(new_address, server_listeners=server_description.server_listeners)
 
     # Remove hosts not in the response.
     for addr in set(sds) - server_description.all_hosts:
@@ -391,7 +398,7 @@ def _update_rs_no_primary_from_member(
     # it doesn't report. Only add new servers.
     for address in server_description.all_hosts:
         if address not in sds:
-            sds[address] = ServerDescription(address)
+            sds[address] = ServerDescription(address, server_listeners=server_description.server_listeners)
 
     if (server_description.me and
             server_description.address != server_description.me):

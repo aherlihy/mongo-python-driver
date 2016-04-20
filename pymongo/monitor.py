@@ -46,6 +46,7 @@ class Monitor(object):
         self._avg_round_trip_time = MovingAverage()
         self._server_heartbeat_listener = self._settings._pool_options.server_heartbeat_listeners
         self._publish_heartbeat = self._server_heartbeat_listener is not None and self._server_heartbeat_listener.enabled #TODO: check if none or not?
+        self._server_listeners = self._settings._pool_options.server_listeners
 
         # We strongly reference the executor and it weakly references us via
         # this closure. When the monitor is freed, stop the executor soon.
@@ -120,7 +121,7 @@ class Monitor(object):
         except Exception as error:
             error_time = _time() - start
             self._topology.reset_pool(address)
-            default = ServerDescription(address, error=error)
+            default = ServerDescription(address, error=error, server_listeners=self._server_listeners)
             if not retry:
                 if self._publish_heartbeat:
                     self._server_heartbeat_listener.publish_server_heartbeat_failed(address, error_time, error)
@@ -152,7 +153,8 @@ class Monitor(object):
             sd = ServerDescription(
                 address=self._server_description.address,
                 ismaster=response,
-                round_trip_time=self._avg_round_trip_time.get())
+                round_trip_time=self._avg_round_trip_time.get(),
+                server_listeners=self._server_listeners)
             if self._publish_heartbeat:
                 self._server_heartbeat_listener.publish_server_heartbeat_succeeded(self._server_description.address, round_trip_time, response)
 
@@ -167,6 +169,7 @@ class Monitor(object):
         request_id, msg, max_doc_size = message.query(
             0, 'admin.$cmd', 0, -1, {'ismaster': 1},
             None, DEFAULT_CODEC_OPTIONS)
+
         if self._publish_heartbeat:
             self._server_heartbeat_listener.publish_server_heartbeat_started(sock_info.address)
         # TODO: use sock_info.command()

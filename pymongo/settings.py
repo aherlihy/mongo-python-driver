@@ -99,5 +99,5 @@ class TopologySettings(object):
     def get_server_descriptions(self):
         """Initial dict of (address, ServerDescription) for all seeds."""
         return dict([
-            (address, ServerDescription(address))
+            (address, ServerDescription(address, server_listeners=self.pool_options.server_listeners))
             for address in self.seeds])

@@ -33,14 +33,15 @@ class ServerDescription(object):
         '_primary', '_max_bson_size', '_max_message_size',
         '_max_write_batch_size', '_min_wire_version', '_max_wire_version',
         '_round_trip_time', '_me', '_is_writable', '_is_readable', '_error',
-        '_set_version', '_election_id')
+        '_set_version', '_election_id', '_server_listeners')
 
     def __init__(
             self,
             address,
             ismaster=None,
             round_trip_time=None,
-            error=None):
+            error=None,
+            server_listeners=None):
         self._address = address
         if not ismaster:
             ismaster = IsMaster({})
@@ -62,7 +63,9 @@ class ServerDescription(object):
         self._round_trip_time = round_trip_time
         self._me = ismaster.me
         self._error = error
-        # TODO: publish ServerOpeningEvent(server_address, ?topology_id)
+        self._server_listeners = server_listeners
+        if self._server_listeners is not None and self._server_listeners.enabled:
+            self._server_listeners.publish_server_opened(self._address, 0) # TODO: topology_id
 
     @property
     def address(self):
@@ -152,6 +155,10 @@ class ServerDescription(object):
     @property
     def is_server_type_known(self):
         return self.server_type != SERVER_TYPE.Unknown
+
+    @property
+    def server_listeners(self):
+        return self._server_listeners
 
     # For unittesting only. Use under no circumstances!
     _host_to_round_trip_time = {}

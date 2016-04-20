@@ -40,6 +40,7 @@ class Topology(object):
     def __init__(self, topology_settings):
         self._topology_listeners = topology_settings._pool_options.topology_listeners
         self._publish_topology = self._topology_listeners is not None and self._topology_listeners.enabled
+        self._server_listeners = topology_settings._pool_options.server_listeners
         # TopologyOpenedEvent must be published before Monitor is created.
         if self._publish_topology:
             self._topology_listeners.publish_topology_opened(id(self)) # TODO: only unique to class lifetime, better thing to use?
@@ -50,7 +51,8 @@ class Topology(object):
             topology_settings.replica_set_name,
             None,
             None,
-            topology_settings._pool_options.topology_listeners)
+            topology_settings._pool_options.topology_listeners,
+            topology_settings._pool_options.server_listeners)
 
         self._description = topology_description
         # Store the seed list to help diagnose errors in _error_message().
@@ -182,8 +184,6 @@ class Topology(object):
             if self._description.has_server(server_description.address):
                 self._description = updated_topology_description(
                     self._description, server_description)
-                #TODO:  self.server_listener.publish ServerDescriptionChangedEvent(old=server_description, new=self._description, server_description.address, ?topology_id)
-                # TODO: ??? MAYBE TOPOLOGY CHANGED??
 
                 self._update_servers()
 
@@ -352,7 +352,8 @@ class Topology(object):
                 server = Server(
                     server_description=sd,
                     pool=self._create_pool_for_server(address),
-                    monitor=monitor) #TODO: will this trigger ServerDescriptionChangedEvent/do we want it to?
+                    monitor=monitor,
+                    server_listeners=self._server_listeners)
 
                 self._servers[address] = server
                 server.open() # TODO: not good for ServerOpeningEvent because after Monitor has been created/socket opened
@@ -378,7 +379,12 @@ class Topology(object):
             socket_timeout=options.connect_timeout,
             ssl_context=options.ssl_context,
             ssl_match_hostname=options.ssl_match_hostname,
-            socket_keepalive=True)
+            socket_keepalive=True,
+            # TODO: include listeners in this PoolOpts?
+            command_listeners=options.command_listeners,
+            server_listeners=options.server_listeners,
+            server_heartbeat_listeners=options.server_heartbeat_listeners,
+            topology_listeners=options.topology_listeners)
 
         return self._settings.pool_class(address, monitor_pool_options,
                                          handshake=False)

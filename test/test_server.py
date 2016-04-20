@@ -28,7 +28,8 @@ class TestServer(unittest.TestCase):
     def test_repr(self):
         ismaster = IsMaster({'ok': 1})
         sd = ServerDescription(('localhost', 27017), ismaster)
-        server = Server(sd, pool=object(), monitor=object())
+        server = Server(sd, pool=object(), monitor=object(),
+                        server_listeners=None)
         self.assertTrue('Standalone' in str(server))
 
 
