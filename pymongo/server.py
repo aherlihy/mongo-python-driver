@@ -49,7 +49,7 @@ class Server(object):
         Reconnect with open().
         """
         if self._server_listeners is not None and self._server_listeners.enabled:
-            self._server_listeners.publish_server_closed_event(self._description.address, 0) # TODO: topology_id
+            self._server_listeners.publish_server_closed(self._description.address, 0) # TODO: topology_id
         self._monitor.close()
         self._pool.reset()
 
@@ -162,8 +162,6 @@ class Server(object):
     @description.setter
     def description(self, server_description):
         assert server_description.address == self._description.address
-        if self._server_listeners is not None and self._server_listeners.enabled:
-            self._server_listeners.publish_server_description_changed_event(self._description, server_description, 0) # TODO: topology_id
         self._description = server_description
 
     @property

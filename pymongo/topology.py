@@ -46,7 +46,7 @@ class Topology(object):
         self._settings = topology_settings
         topology_description = TopologyDescription(
             topology_settings.get_topology_type(),
-            topology_settings.get_server_descriptions(),
+            topology_settings.get_server_descriptions(self._server_listeners),
             topology_settings.replica_set_name,
             None,
             None,
@@ -181,13 +181,17 @@ class Topology(object):
             # change removed it. E.g., we got a host list from the primary
             # that didn't include this server.
             if self._description.has_server(server_description.address):
-                self._description = updated_topology_description(
+                self._description, events = updated_topology_description(
                     self._description, server_description)
 
                 self._update_servers()
 
                 # Wake waiters in select_servers().
                 self._condition.notify_all()
+        # Avoid deadlock by publishing events after releasing the lock in
+        # case the event callback code tries to acquire the lock.
+        if self._server_listeners is not None and self._server_listeners.enabled:
+            self._server_listeners.publish_server_description_changed(events['server_listeners']['old_description'], events['server_listeners']['new_description'],server_description.address)
 
     def get_server_by_address(self, address):
         """Get a Server or None.

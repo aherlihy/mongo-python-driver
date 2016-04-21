@@ -34,15 +34,14 @@ class ServerDescription(object):
         '_primary', '_max_bson_size', '_max_message_size',
         '_max_write_batch_size', '_min_wire_version', '_max_wire_version',
         '_round_trip_time', '_me', '_is_writable', '_is_readable', '_error',
-        '_set_version', '_election_id', '_server_listeners')
+        '_set_version', '_election_id')
 
     def __init__(
             self,
             address,
             ismaster=None,
             round_trip_time=None,
-            error=None,
-            server_listeners=None):
+            error=None):
         self._address = address
         if not ismaster:
             ismaster = IsMaster({})
@@ -64,9 +63,6 @@ class ServerDescription(object):
         self._round_trip_time = round_trip_time
         self._me = ismaster.me
         self._error = error
-        self._server_listeners = server_listeners
-        if self._server_listeners is not None and self._server_listeners.enabled:
-            self._server_listeners.publish_server_opened(self._address, 0) # TODO: topology_id
 
     @property
     def address(self):

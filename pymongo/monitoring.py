@@ -804,16 +804,19 @@ class _ServerListeners(object):
                 _handle_exception()
 
     def publish_server_description_changed(self, previous_description,
-                                           new_description, topology_id):
+                                           new_description, server_address,
+                                           topology_id):
         """Publish a ServerDescriptionChangedEvent to all server listeners.
 
         :Parameters:
          - `previous_description`: The previous server description.
+         - `server_address`: The address (host/port pair) of the server.
          - `new_description`: The new server description.
          - `topology_id`: A unique identifier for the topology.
         """
         event = ServerDescriptionChangedEvent(previous_description,
-                                              new_description, topology_id)
+                                              new_description, server_address,
+                                              topology_id)
         for subscriber in self.__server_listeners:
             try:
                 subscriber.description_changed(event)

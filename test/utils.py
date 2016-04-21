@@ -64,6 +64,30 @@ class EventListener(monitoring.CommandListener):
             self.results['failed'].append(event)
 
 
+class AllEventListener(monitoring.ServerHeartbeatListener, monitoring.ServerListener, monitoring.TopologyListener):
+    """ Listens to all events."""
+
+    def __init__(self):
+        self.results = []
+
+    def opened(self, event):
+        self.results.append(event)
+
+    def description_changed(self, event):
+        self.results.append(event)
+
+    def closed(self, event):
+        self.results.append(event)
+
+    def started(self, event):
+        self.results.append(event)
+
+    def succeeded(self, event):
+        self.results.append(event)
+
+    def failed(self, event):
+        self.results.append(event)
+
 def _connection_string_noauth(h, p):
     if h.startswith("mongodb://"):
         return h
