@@ -180,18 +180,29 @@ class Topology(object):
             # once. Check if it's still in the description or if some state-
             # change removed it. E.g., we got a host list from the primary
             # that didn't include this server.
+            old_topology_description = None
             if self._description.has_server(server_description.address):
-                self._description, events = updated_topology_description(
+                old_topology_description = self._description
+                self._description = updated_topology_description(
                     self._description, server_description)
 
                 self._update_servers()
 
                 # Wake waiters in select_servers().
                 self._condition.notify_all()
+
         # Avoid deadlock by publishing events after releasing the lock in
         # case the event callback code tries to acquire the lock.
-        if self._server_listeners is not None and self._server_listeners.enabled:
-            self._server_listeners.publish_server_description_changed(events['server_listeners']['old_description'], events['server_listeners']['new_description'],server_description.address)
+        if (old_topology_description is not None and
+            self._server_listeners is not None and
+            self._server_listeners.enabled):
+            old_server_description = old_topology_description._server_descriptions[server_description.address]
+            self._server_listeners.publish_server_description_changed(old_server_description, server_description, server_description.address, 0)
+
+        if (old_topology_description is not None and
+            self._topology_listeners is not None and
+            self._topology_listeners.enabled):
+            self._topology_listeners.publish_topology_description_changed(old_topology_description, self._description, 0)
 
     def get_server_by_address(self, address):
         """Get a Server or None.
@@ -359,7 +370,7 @@ class Topology(object):
                     server_listeners=self._server_listeners)
 
                 self._servers[address] = server
-                server.open() # TODO: not good for ServerOpeningEvent because after Monitor has been created/socket opened
+                server.open()
             else:
                 self._servers[address].description = sd
 

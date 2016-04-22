@@ -174,7 +174,6 @@ def updated_topology_description(topology_description, server_description):
     server at server_description.address. Does not modify topology_description.
     """
     address = server_description.address
-    events = {}
 
     # These values will be updated, if necessary, to form the new
     # TopologyDescription.
@@ -188,8 +187,6 @@ def updated_topology_description(topology_description, server_description):
     sds = topology_description.server_descriptions()
 
     # Replace this server's description with the new one.
-    if topology_description._server_listeners is not None and topology_description._server_listeners.enabled:
-        events['server_listeners'] = {"old_description": sds[address], "new_description": server_description}
     sds[address] = server_description
 
     if topology_type == TOPOLOGY_TYPE.Single:
@@ -201,7 +198,7 @@ def updated_topology_description(topology_description, server_description):
             max_set_version,
             max_election_id,
             topology_description._topology_listeners,
-            topology_description._server_listeners), events
+            topology_description._server_listeners)
 
     if topology_type == TOPOLOGY_TYPE.Unknown:
         if server_type == SERVER_TYPE.Standalone:
@@ -262,13 +259,13 @@ def updated_topology_description(topology_description, server_description):
             topology_type = _check_has_primary(sds)
 
     # Return updated copy.
-    return (TopologyDescription(topology_type,
+    return TopologyDescription(topology_type,
                                 sds,
                                 set_name,
                                 max_set_version,
                                 max_election_id,
                                 topology_description._topology_listeners,
-                                topology_description._server_listeners), events)
+                                topology_description._server_listeners)
 
 
 
