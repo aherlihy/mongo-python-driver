@@ -25,7 +25,7 @@ from pymongo.pool import PoolOptions
 from pymongo.topology_description import (updated_topology_description,
                                           TOPOLOGY_TYPE,
                                           TopologyDescription)
-from pymongo.errors import ServerSelectionTimeoutError, InvalidOperation
+from pymongo.errors import ServerSelectionTimeoutError
 from pymongo.monotonic import time as _time
 from pymongo.server import Server
 from pymongo.server_selectors import (any_server_selector,
@@ -38,20 +38,24 @@ from pymongo.server_selectors import (any_server_selector,
 class Topology(object):
     """Monitor a topology of one or more servers."""
     def __init__(self, topology_settings):
-        self._topology_listeners = topology_settings._pool_options.topology_listeners
-        self._server_listeners = topology_settings._pool_options.server_listeners
-        # TopologyOpenedEvent must be published before Monitor is created.
-        if self._topology_listeners is not None and self._topology_listeners.enabled:
-            self._topology_listeners.publish_topology_opened(0) # TODO: topology_id
+        self._topology_id = topology_settings._topology_id
+        tpl = topology_settings._pool_options.topology_listeners
+        self._topology_listeners = tpl
+        self._top_pub = (self._topology_listeners is not None
+                             and self._topology_listeners.enabled)
+        svl = topology_settings._pool_options.server_listeners
+        self._server_listeners = svl
+        self._svr_pub = (self._server_listeners is not None
+                            and self._server_listeners.enabled)
+        if self._top_pub:
+            self._topology_listeners.publish_topology_opened(self._topology_id)
         self._settings = topology_settings
         topology_description = TopologyDescription(
             topology_settings.get_topology_type(),
             topology_settings.get_server_descriptions(self._server_listeners),
             topology_settings.replica_set_name,
             None,
-            None,
-            self._topology_listeners,
-            self._server_listeners)
+            None)
 
         self._description = topology_description
         # Store the seed list to help diagnose errors in _error_message().
@@ -84,7 +88,6 @@ class Topology(object):
                         "See PyMongo's documentation for details: http://api."
                         "mongodb.org/python/current/faq.html#using-pymongo-"
                         "with-multiprocessing>")
-
 
             self._ensure_opened()
 
@@ -180,9 +183,9 @@ class Topology(object):
             # once. Check if it's still in the description or if some state-
             # change removed it. E.g., we got a host list from the primary
             # that didn't include this server.
-            old_topology_description = None
+            old_top_description = None
             if self._description.has_server(server_description.address):
-                old_topology_description = self._description
+                old_top_description = self._description
                 self._description = updated_topology_description(
                     self._description, server_description)
 
@@ -193,16 +196,16 @@ class Topology(object):
 
         # Avoid deadlock by publishing events after releasing the lock in
         # case the event callback code tries to acquire the lock.
-        if (old_topology_description is not None and
-            self._server_listeners is not None and
-            self._server_listeners.enabled):
-            old_server_description = old_topology_description._server_descriptions[server_description.address]
-            self._server_listeners.publish_server_description_changed(old_server_description, server_description, server_description.address, 0)
+        if old_top_description is not None and self._svr_pub:
+            old_server_description = old_top_description._server_descriptions[
+                server_description.address]
+            self._server_listeners.publish_server_description_changed(
+                old_server_description, server_description,
+                server_description.address, self._topology_id)
 
-        if (old_topology_description is not None and
-            self._topology_listeners is not None and
-            self._topology_listeners.enabled):
-            self._topology_listeners.publish_topology_description_changed(old_topology_description, self._description, 0)
+        if old_top_description is not None and self._top_pub:
+            self._topology_listeners.publish_topology_description_changed(
+                old_top_description, self._description, self._topology_id)
 
     def get_server_by_address(self, address):
         """Get a Server or None.
@@ -241,7 +244,6 @@ class Topology(object):
 
             descriptions = selector(self._description.known_servers)
             return set([d.address for d in descriptions])
-
 
     def get_secondaries(self):
         """Return set of secondary addresses."""
@@ -286,8 +288,10 @@ class Topology(object):
             # Mark all servers Unknown.
             self._description = self._description.reset()
             self._update_servers()
-            if self._topology_listeners is not None and self._topology_listeners.enabled:
-                self._topology_listeners.publish_topology_closed(0) # TODO: topology_id
+        # Publish only after releasing the lock.
+        if self._top_pub:
+            self._topology_listeners.publish_topology_closed(
+                self._topology_id)
 
     @property
     def description(self):
@@ -298,7 +302,6 @@ class Topology(object):
 
         Hold the lock when calling this.
         """
-
         if not self._opened:
             self._opened = True
             self._update_servers()
@@ -367,7 +370,8 @@ class Topology(object):
                     server_description=sd,
                     pool=self._create_pool_for_server(address),
                     monitor=monitor,
-                    server_listeners=self._server_listeners)
+                    server_listeners=self._server_listeners,
+                    topology_id=self._topology_id)
 
                 self._servers[address] = server
                 server.open()

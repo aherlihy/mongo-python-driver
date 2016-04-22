@@ -16,6 +16,7 @@
 
 import threading
 
+from bson.objectid import ObjectId
 from pymongo import monitor, pool
 from pymongo.common import LOCAL_THRESHOLD_MS, SERVER_SELECTION_TIMEOUT
 from pymongo.topology_description import TOPOLOGY_TYPE
@@ -46,6 +47,7 @@ class TopologySettings(object):
         self._local_threshold_ms = local_threshold_ms
         self._server_selection_timeout = server_selection_timeout
         self._direct = (len(self._seeds) == 1 and not replica_set_name)
+        self._topology_id = ObjectId()
 
     @property
     def seeds(self):
@@ -102,5 +104,6 @@ class TopologySettings(object):
         for address in self.seeds:
             server_descriptions[address] = ServerDescription(address)
             if server_listeners is not None and server_listeners.enabled:
-                server_listeners.publish_server_opened(address, 0)
+                server_listeners.publish_server_opened(address,
+                                                       self._topology_id)
         return server_descriptions

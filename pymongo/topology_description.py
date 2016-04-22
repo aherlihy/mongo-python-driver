@@ -34,9 +34,7 @@ class TopologyDescription(object):
             server_descriptions,
             replica_set_name,
             max_set_version,
-            max_election_id,
-            topology_listeners,
-            server_listeners):
+            max_election_id):
         """Represent a topology of servers.
 
         :Parameters:
@@ -46,16 +44,12 @@ class TopologyDescription(object):
           - `replica_set_name`: replica set name or None
           - `max_set_version`: greatest setVersion seen from a primary, or None
           - `max_election_id`: greatest electionId seen from a primary, or None
-          - `topology_listeners`: the event listeners for topology, or None
-          - `server_listeners`: the event listeners for server, or None
         """
         self._topology_type = topology_type
         self._replica_set_name = replica_set_name
         self._server_descriptions = server_descriptions
         self._max_set_version = max_set_version
         self._max_election_id = max_election_id
-        self._topology_listeners = topology_listeners
-        self._server_listeners = server_listeners
 
         # Is PyMongo compatible with all servers' wire protocols?
         self._incompatible_err = None
@@ -117,9 +111,7 @@ class TopologyDescription(object):
             sds,
             self._replica_set_name,
             self._max_set_version,
-            self._max_election_id,
-            self._topology_listeners,
-            self._server_listeners)
+            self._max_election_id)
 
     def server_descriptions(self):
         """Dict of (address, ServerDescription)."""
@@ -196,9 +188,7 @@ def updated_topology_description(topology_description, server_description):
             sds,
             set_name,
             max_set_version,
-            max_election_id,
-            topology_description._topology_listeners,
-            topology_description._server_listeners)
+            max_election_id)
 
     if topology_type == TOPOLOGY_TYPE.Unknown:
         if server_type == SERVER_TYPE.Standalone:
@@ -263,11 +253,7 @@ def updated_topology_description(topology_description, server_description):
                                sds,
                                set_name,
                                max_set_version,
-                               max_election_id,
-                               topology_description._topology_listeners,
-                               topology_description._server_listeners)
-
-
+                               max_election_id)
 
 
 def _update_rs_from_primary(

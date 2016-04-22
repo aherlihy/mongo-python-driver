@@ -357,7 +357,8 @@ class MongoClient(common.BaseObject):
 
         self._command_listeners = options.pool_options.command_listeners
         self._server_listeners = options.pool_options.server_listeners
-        self._server_heartbeat_listeners = options.pool_options.server_heartbeat_listeners
+        shbl = options.pool_options.server_heartbeat_listeners
+        self._server_heartbeat_listeners = shbl
         self._topology_listeners = options.pool_options.topology_listeners
 
         # Cache of existing indexes used by ensure_index ops.

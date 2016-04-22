@@ -18,6 +18,7 @@ import sys
 
 sys.path[0:0] = [""]
 
+from bson.objectid import ObjectId
 from pymongo.ismaster import IsMaster
 from pymongo.server import Server
 from pymongo.server_description import ServerDescription
@@ -29,7 +30,7 @@ class TestServer(unittest.TestCase):
         ismaster = IsMaster({'ok': 1})
         sd = ServerDescription(('localhost', 27017), ismaster)
         server = Server(sd, pool=object(), monitor=object(),
-                        server_listeners=None)
+                        server_listeners=None, topology_id=ObjectId())
         self.assertTrue('Standalone' in str(server))
 
 

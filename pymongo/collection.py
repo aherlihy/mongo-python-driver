@@ -466,7 +466,8 @@ class Collection(common.BaseObject):
                         reply = message._convert_write_result(
                             name, cmd, details)
                         command_listeners.publish_command_success(
-                            dur, reply, name, rqst_id, sock_info.address, op_id)
+                            dur, reply, name, rqst_id, sock_info.address,
+                            op_id)
                         raise
                 else:
                     details = message._convert_exception(exc)

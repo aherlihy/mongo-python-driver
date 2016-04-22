@@ -15,8 +15,8 @@
 """Tools to monitor driver events.
 
 Use :func:`register` to register global listeners for specific events.
-Listeners must inherit from a subclass of :class:`EventListener` and implement
-the correct functions for that class.
+Listeners must inherit from the subclass of :class:`EventListener` intended for
+that type of event and implement the correct functions for that class.
 
 For example, a simple command logger might be implemented like this::
 
@@ -44,15 +44,15 @@ For example, a simple command logger might be implemented like this::
 
     monitoring.register(CommandLogger())
 
-Command listeners can also be registered per instance of
+Event listeners can also be registered per instance of
 :class:`~pymongo.mongo_client.MongoClient`::
 
     client = MongoClient(command_listeners=[CommandLogger()],
                          server_listeners=[ServerLogger()])
 
-Note that previously registered global listeners are automatically included when
-configuring per client event listeners. Registering a new global listener will
-not add that listener to existing client instances.
+Note that previously registered global listeners are automatically included
+when configuring per client event listeners. Registering a new global listener
+will not add that listener to existing client instances.
 
 .. note:: Events are delivered **synchronously**. Application threads block
   waiting for event handlers (e.g. :meth:`~CommandListener.started`) to
@@ -623,7 +623,6 @@ class _CommandListeners(object):
             except Exception:
                 _handle_exception()
 
-
     def publish_command_success(self, duration, reply, command_name,
                                 request_id, connection_id, op_id=None):
         """Publish a CommandSucceededEvent to all command listeners.
@@ -646,7 +645,6 @@ class _CommandListeners(object):
                 subscriber.succeeded(event)
             except Exception:
                 _handle_exception()
-
 
     def publish_command_failure(self, duration, failure, command_name,
                                 request_id, connection_id, op_id=None):
@@ -682,7 +680,8 @@ class _ServerHeartbeatListeners(object):
       - `listeners`: A list of server heartbeat listeners.
     """
     def __init__(self, listeners):
-        self.__server_heartbeat_listeners = _LISTENERS.server_heartbeat_listeners[:]
+        shbl = _LISTENERS.server_heartbeat_listeners[:]
+        self.__server_heartbeat_listeners = shbl
         if listeners is not None:
             self.__server_heartbeat_listeners.extend(listeners)
         self.__enabled = bool(self.__server_heartbeat_listeners)
@@ -731,8 +730,7 @@ class _ServerHeartbeatListeners(object):
             except Exception:
                 _handle_exception()
 
-    def publish_server_heartbeat_failed(self, connection_id, duration,
-                                           reply):
+    def publish_server_heartbeat_failed(self, connection_id, duration, reply):
         """Publish a ServerHeartbeatFailedEvent to all server heartbeat
         listeners.
 

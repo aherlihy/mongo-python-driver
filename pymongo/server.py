@@ -25,12 +25,15 @@ from pymongo.server_type import SERVER_TYPE
 
 
 class Server(object):
-    def __init__(self, server_description, pool, monitor, server_listeners):
+    def __init__(self, server_description, pool, monitor, server_listeners,
+                 topology_id):
         """Represent one MongoDB server."""
         self._description = server_description
         self._pool = pool
         self._monitor = monitor
         self._server_listeners = server_listeners
+        self._pub = server_listeners is not None and server_listeners.enabled
+        self._topology_id = topology_id
 
     def open(self):
         """Start monitoring, or restart after a fork.
@@ -48,8 +51,9 @@ class Server(object):
 
         Reconnect with open().
         """
-        if self._server_listeners is not None and self._server_listeners.enabled:
-            self._server_listeners.publish_server_closed(self._description.address, 0) # TODO: topology_id
+        if self._pub:
+            self._server_listeners.publish_server_closed(
+                self._description.address, self._topology_id)
         self._monitor.close()
         self._pool.reset()
 
