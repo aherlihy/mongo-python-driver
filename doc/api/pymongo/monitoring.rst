@@ -7,6 +7,12 @@
    .. autofunction:: register(listener)
    .. autoclass:: CommandListener
       :members:
+   .. autoclass:: ServerListener
+      :members:
+   .. autoclass:: ServerHeartbeatListener
+      :members:
+   .. autoclass:: TopologyListener
+      :members:
    .. autoclass:: CommandStartedEvent
       :members:
       :inherited-members:

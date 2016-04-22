@@ -26,7 +26,6 @@ class ServerDescription(object):
       - `ismaster`: Optional IsMaster instance
       - `round_trip_time`: Optional float
       - `error`: Optional, the last error attempting to connect to the server
-      - `server_listeners`: Optional, the event listeners for servers
     """
 
     __slots__ = (
@@ -152,10 +151,6 @@ class ServerDescription(object):
     @property
     def is_server_type_known(self):
         return self.server_type != SERVER_TYPE.Unknown
-
-    @property
-    def server_listeners(self):
-        return self._server_listeners
 
     # For unittesting only. Use under no circumstances!
     _host_to_round_trip_time = {}

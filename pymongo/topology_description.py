@@ -260,12 +260,12 @@ def updated_topology_description(topology_description, server_description):
 
     # Return updated copy.
     return TopologyDescription(topology_type,
-                                sds,
-                                set_name,
-                                max_set_version,
-                                max_election_id,
-                                topology_description._topology_listeners,
-                                topology_description._server_listeners)
+                               sds,
+                               set_name,
+                               max_set_version,
+                               max_election_id,
+                               topology_description._topology_listeners,
+                               topology_description._server_listeners)
 
 
 
