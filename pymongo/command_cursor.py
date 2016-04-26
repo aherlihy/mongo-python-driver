@@ -91,8 +91,8 @@ class CommandCursor(object):
         """Send a getmore message and handle the response.
         """
         client = self.__collection.database.client
-        command_listeners = client._command_listeners
-        publish = command_listeners.enabled
+        listeners = client._event_listeners
+        publish = listeners.enabled_for_commands
         try:
             response = client._send_message_with_response(
                 operation, address=self.__address)
@@ -122,7 +122,7 @@ class CommandCursor(object):
 
             if publish:
                 duration = (datetime.datetime.now() - start) + cmd_duration
-                command_listeners.publish_command_failure(
+                listeners.publish_command_failure(
                     duration, exc.details, "getMore", rqst_id, self.__address)
 
             raise
@@ -133,7 +133,7 @@ class CommandCursor(object):
 
             if publish:
                 duration = (datetime.datetime.now() - start) + cmd_duration
-                command_listeners.publish_command_failure(
+                listeners.publish_command_failure(
                     duration, exc.details, "getMore", rqst_id, self.__address)
 
             client._reset_server_and_request_check(self.address)
@@ -141,7 +141,7 @@ class CommandCursor(object):
         except Exception as exc:
             if publish:
                 duration = (datetime.datetime.now() - start) + cmd_duration
-                command_listeners.publish_command_failure(
+                listeners.publish_command_failure(
                     duration, _convert_exception(exc), "getMore", rqst_id,
                     self.__address)
             raise
@@ -163,7 +163,7 @@ class CommandCursor(object):
                               "ns": self.__collection.full_name,
                               "nextBatch": documents},
                    "ok": 1}
-            command_listeners.publish_command_success(
+            listeners.publish_command_success(
                 duration, res, "getMore", rqst_id, self.__address)
 
         if self.__id == 0:

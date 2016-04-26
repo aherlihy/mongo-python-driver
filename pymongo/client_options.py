@@ -19,10 +19,7 @@ from pymongo.auth import _build_credentials_tuple
 from pymongo.common import validate_boolean
 from pymongo import common
 from pymongo.errors import ConfigurationError
-from pymongo.monitoring import (_CommandListeners,
-                                _ServerListeners,
-                                _ServerHeartbeatListeners,
-                                _TopologyListeners)
+from pymongo.monitoring import _EventListeners
 from pymongo.pool import PoolOptions
 from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import make_read_preference
@@ -103,19 +100,13 @@ def _parse_pool_options(options):
     socket_timeout = options.get('sockettimeoutms')
     wait_queue_timeout = options.get('waitqueuetimeoutms')
     wait_queue_multiple = options.get('waitqueuemultiple')
-    command_listeners = options.get('command_listeners')
-    server_listeners = options.get('server_listeners')
-    server_heartbeat_listeners = options.get('server_heartbeat_listeners')
-    topology_listeners = options.get('topology_listeners')
+    event_listeners = options.get('event_listeners')
     ssl_context, ssl_match_hostname = _parse_ssl_options(options)
     return PoolOptions(max_pool_size,
                        connect_timeout, socket_timeout,
                        wait_queue_timeout, wait_queue_multiple,
                        ssl_context, ssl_match_hostname, socket_keepalive,
-                       _CommandListeners(command_listeners),
-                       _ServerListeners(server_listeners),
-                       _ServerHeartbeatListeners(server_heartbeat_listeners),
-                       _TopologyListeners(topology_listeners))
+                       _EventListeners(event_listeners))
 
 
 class ClientOptions(object):

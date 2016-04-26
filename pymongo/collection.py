@@ -442,15 +442,15 @@ class Collection(common.BaseObject):
                     sock_info.max_wire_version >= 4):
             raise OperationFailure("Cannot set bypass_document_validation with"
                                    " unacknowledged write concern")
-        command_listeners = self.database.client._command_listeners
-        publish = command_listeners.enabled
+        listeners = self.database.client._event_listeners
+        publish = listeners.enabled_for_commands
 
         if publish:
             start = datetime.datetime.now()
         rqst_id, msg, max_size = func(*args)
         if publish:
             duration = datetime.datetime.now() - start
-            command_listeners.publish_command_start(
+            listeners.publish_command_start(
                 cmd, self.__database.name, rqst_id, sock_info.address, op_id)
             start = datetime.datetime.now()
         try:
@@ -465,13 +465,12 @@ class Collection(common.BaseObject):
                     if details.get("ok") and "n" in details:
                         reply = message._convert_write_result(
                             name, cmd, details)
-                        command_listeners.publish_command_success(
-                            dur, reply, name, rqst_id, sock_info.address,
-                            op_id)
+                        listeners.publish_command_success(
+                            dur, reply, name, rqst_id, sock_info.address, op_id)
                         raise
                 else:
                     details = message._convert_exception(exc)
-                command_listeners.publish_command_failure(
+                listeners.publish_command_failure(
                     dur, details, name, rqst_id, sock_info.address, op_id)
             raise
         if publish:
@@ -481,7 +480,7 @@ class Collection(common.BaseObject):
                 # Comply with APM spec.
                 reply = {'ok': 1}
             duration = (datetime.datetime.now() - start) + duration
-            command_listeners.publish_command_success(
+            listeners.publish_command_success(
                 duration, reply, name, rqst_id, sock_info.address, op_id)
         return result
 
@@ -571,7 +570,7 @@ class Collection(common.BaseObject):
             command['bypassDocumentValidation'] = True
         bwc = message._BulkWriteContext(
             self.database.name, command, sock_info, op_id,
-            self.database.client._command_listeners)
+            self.database.client._event_listeners)
         if sock_info.max_wire_version > 1 and acknowledged:
             # Batched insert command.
             results = message._do_batched_write_command(
@@ -1503,7 +1502,7 @@ class Collection(common.BaseObject):
                     sock_info, self.__database.name, "system.indexes",
                     {"ns": self.__full_name}, 0, slave_ok, codec_options,
                     ReadPreference.PRIMARY, cmd,
-                    self.database.client._command_listeners)
+                    self.database.client._event_listeners)
                 data = res["data"]
                 cursor = {
                     "id": res["cursor_id"],

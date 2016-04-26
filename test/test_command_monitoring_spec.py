@@ -49,17 +49,17 @@ class TestAllScenarios(unittest.TestCase):
     @classmethod
     @client_context.require_connection
     def setUpClass(cls):
-        cls.command_listener = EventListener()
+        cls.listener = EventListener()
         cls.saved_listeners = monitoring._LISTENERS
         monitoring._LISTENERS = monitoring._Listeners([], [], [], [])
-        cls.client = single_client(command_listeners=[cls.command_listener])
+        cls.client = single_client(event_listeners=[cls.listener])
 
     @classmethod
     def tearDownClass(cls):
         monitoring._LISTENERS = cls.saved_listeners
 
     def tearDown(self):
-        self.command_listener.results.clear()
+        self.listener.results.clear()
 
 
 def create_test(scenario_def):
@@ -86,7 +86,7 @@ def create_test(scenario_def):
             coll = self.client[dbname][collname]
             coll.drop()
             coll.insert_many(scenario_def['data'])
-            self.command_listener.results.clear()
+            self.listener.results.clear()
             name = camel_to_snake(test['operation']['name'])
             # Don't send $readPreference to mongos before 2.4.
             if (client_context.version.at_least(2, 4, 0)
@@ -127,7 +127,7 @@ def create_test(scenario_def):
                 # Wait for the killCursors thread to run if necessary.
                 if 'limit' in args and client_context.version[:2] < (3, 1):
                     self.client._kill_cursors_executor.wake()
-                    started = self.command_listener.results['started']
+                    started = self.listener.results['started']
                     wait_until(
                         lambda: started[-1].command_name == 'killCursors',
                         "publish a start event for killCursors.")
@@ -140,7 +140,7 @@ def create_test(scenario_def):
             for expectation in test['expectations']:
                 event_type = next(iter(expectation))
                 if event_type == "command_started_event":
-                    event = self.command_listener.results['started'].pop(0)
+                    event = self.listener.results['started'].pop(0)
                     # The tests substitute 42 for any number other than 0.
                     if (event.command_name == 'getMore'
                             and event.command['getMore']):
@@ -148,7 +148,7 @@ def create_test(scenario_def):
                     elif event.command_name == 'killCursors':
                         event.command['cursors'] = [42]
                 elif event_type == "command_succeeded_event":
-                    event = self.command_listener.results['succeeded'].pop(0)
+                    event = self.listener.results['succeeded'].pop(0)
                     reply = event.reply
                     # The tests substitute 42 for any number other than 0,
                     # and "" for any error message.
@@ -166,7 +166,7 @@ def create_test(scenario_def):
                             reply.pop('cursorsKilled')
                         reply['cursorsUnknown'] = [42]
                 elif event_type == "command_failed_event":
-                    event = self.command_listener.results['failed'].pop(0)
+                    event = self.listener.results['failed'].pop(0)
                 else:
                     self.fail("Unknown event type")
                 for attr, expected in expectation[event_type].items():

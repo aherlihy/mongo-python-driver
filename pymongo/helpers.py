@@ -237,8 +237,7 @@ def _check_gle_response(response):
 
 
 def _first_batch(sock_info, db, coll, query, ntoreturn,
-                 slave_ok, codec_options, read_preference, cmd,
-                 command_listeners):
+                 slave_ok, codec_options, read_preference, cmd, listeners):
     """Simple query helper for retrieving a first (and possibly only) batch."""
     query = _Query(
         0, db, coll, 0, query, None,
@@ -246,7 +245,7 @@ def _first_batch(sock_info, db, coll, query, ntoreturn,
 
     name = next(iter(cmd))
     duration = None
-    publish = command_listeners.enabled
+    publish = listeners.enabled_for_commands
     if publish:
         start = datetime.datetime.now()
 
@@ -255,7 +254,7 @@ def _first_batch(sock_info, db, coll, query, ntoreturn,
 
     if publish:
         encoding_duration = datetime.datetime.now() - start
-        command_listeners.publish_command_start(
+        listeners.publish_command_start(
             cmd, db, request_id, sock_info.address)
         start = datetime.datetime.now()
 
@@ -270,12 +269,12 @@ def _first_batch(sock_info, db, coll, query, ntoreturn,
                 failure = exc.details
             else:
                 failure = _convert_exception(exc)
-            command_listeners.publish_command_failure(
+            listeners.publish_command_failure(
                 duration, failure, name, request_id, sock_info.address)
         raise
     if publish:
         duration = (datetime.datetime.now() - start) + encoding_duration
-        command_listeners.publish_command_success(
+        listeners.publish_command_success(
             duration, result, name, request_id, sock_info.address)
 
     return result

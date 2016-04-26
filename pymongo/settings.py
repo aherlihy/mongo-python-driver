@@ -98,12 +98,11 @@ class TopologySettings(object):
         else:
             return TOPOLOGY_TYPE.Unknown
 
-    def get_server_descriptions(self, server_listeners):
+    def get_server_descriptions(self, listeners):
         """Initial dict of (address, ServerDescription) for all seeds."""
         server_descriptions = {}
         for address in self.seeds:
             server_descriptions[address] = ServerDescription(address)
-            if server_listeners is not None and server_listeners.enabled:
-                server_listeners.publish_server_opened(address,
-                                                       self._topology_id)
+            if listeners is not None and listeners.enabled_for_server:
+                listeners.publish_server_opened(address, self._topology_id)
         return server_descriptions

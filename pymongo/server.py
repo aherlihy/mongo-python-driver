@@ -25,14 +25,14 @@ from pymongo.server_type import SERVER_TYPE
 
 
 class Server(object):
-    def __init__(self, server_description, pool, monitor, server_listeners,
+    def __init__(self, server_description, pool, monitor, listeners,
                  topology_id):
         """Represent one MongoDB server."""
         self._description = server_description
         self._pool = pool
         self._monitor = monitor
-        self._server_listeners = server_listeners
-        self._pub = server_listeners is not None and server_listeners.enabled
+        self._listeners = listeners
+        self._pub = listeners is not None
         self._topology_id = topology_id
 
     def open(self):
@@ -51,8 +51,8 @@ class Server(object):
 
         Reconnect with open().
         """
-        if self._pub:
-            self._server_listeners.publish_server_closed(
+        if self._pub and self._listeners.enabled_for_server:
+            self._listeners.publish_server_closed(
                 self._description.address, self._topology_id)
         self._monitor.close()
         self._pool.reset()
@@ -79,7 +79,7 @@ class Server(object):
             operation,
             set_slave_okay,
             all_credentials,
-            command_listeners,
+            listeners,
             exhaust=False):
         """Send a message to MongoDB and return a Response object.
 
@@ -89,13 +89,14 @@ class Server(object):
           - `operation`: A _Query or _GetMore object.
           - `set_slave_okay`: Pass to operation.get_message.
           - `all_credentials`: dict, maps auth source to MongoCredential.
+          - `listeners`: Instance of _EventListeners or None.
           - `exhaust` (optional): If True, the socket used stays checked out.
             It is returned along with its Pool in the Response.
         """
         with self.get_socket(all_credentials, exhaust) as sock_info:
 
             duration = None
-            publish = command_listeners.enabled
+            publish = listeners.enabled_for_commands
             if publish:
                 start = datetime.now()
 
@@ -118,7 +119,7 @@ class Server(object):
             if publish:
                 encoding_duration = datetime.now() - start
                 cmd, dbn = operation.as_command()
-                command_listeners.publish_command_start(
+                listeners.publish_command_start(
                     cmd, dbn, request_id, sock_info.address)
                 start = datetime.now()
 
@@ -129,7 +130,7 @@ class Server(object):
                 if publish:
                     duration = (datetime.now() - start) + encoding_duration
                     failure = _convert_exception(exc)
-                    command_listeners.publish_command_failure(
+                    listeners.publish_command_failure(
                         duration, failure, next(iter(cmd)), request_id,
                         sock_info.address)
                 raise

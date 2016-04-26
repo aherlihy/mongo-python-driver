@@ -30,7 +30,7 @@ class TestServer(unittest.TestCase):
         ismaster = IsMaster({'ok': 1})
         sd = ServerDescription(('localhost', 27017), ismaster)
         server = Server(sd, pool=object(), monitor=object(),
-                        server_listeners=None, topology_id=ObjectId())
+                        listeners=None, topology_id=ObjectId())
         self.assertTrue('Standalone' in str(server))
 
 

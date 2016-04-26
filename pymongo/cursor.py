@@ -833,8 +833,8 @@ class Cursor(object):
         Can raise ConnectionFailure.
         """
         client = self.__collection.database.client
-        command_listeners = client._command_listeners
-        publish = command_listeners.enabled
+        listeners = client._event_listeners
+        publish = listeners.enabled_for_commands
         from_command = False
 
         if operation:
@@ -878,7 +878,7 @@ class Cursor(object):
                     cmd['batchSize'] = self.__batch_size
                 if self.__max_time_ms:
                     cmd['maxTimeMS'] = self.__max_time_ms
-                command_listeners.publish_command_start(
+                listeners.publish_command_start(
                     cmd, self.__collection.database.name, 0, self.__address)
                 start = datetime.datetime.now()
             try:
@@ -886,7 +886,7 @@ class Cursor(object):
             except Exception as exc:
                 if publish:
                     duration = datetime.datetime.now() - start
-                    command_listeners.publish_command_failure(
+                    listeners.publish_command_failure(
                         duration, _convert_exception(exc), cmd_name, rqst_id,
                         self.__address)
                 if isinstance(exc, ConnectionFailure):
@@ -911,7 +911,7 @@ class Cursor(object):
 
             if publish:
                 duration = (datetime.datetime.now() - start) + cmd_duration
-                command_listeners.publish_command_failure(
+                listeners.publish_command_failure(
                     duration, exc.details, cmd_name, rqst_id, self.__address)
 
             # If this is a tailable cursor the error is likely
@@ -931,7 +931,7 @@ class Cursor(object):
 
             if publish:
                 duration = (datetime.datetime.now() - start) + cmd_duration
-                command_listeners.publish_command_failure(
+                listeners.publish_command_failure(
                     duration, exc.details, cmd_name, rqst_id, self.__address)
 
             client._reset_server_and_request_check(self.__address)
@@ -939,7 +939,7 @@ class Cursor(object):
         except Exception as exc:
             if publish:
                 duration = (datetime.datetime.now() - start) + cmd_duration
-                command_listeners.publish_command_failure(
+                listeners.publish_command_failure(
                     duration, _convert_exception(exc), cmd_name, rqst_id,
                     self.__address)
             raise
@@ -959,7 +959,7 @@ class Cursor(object):
                     res["cursor"]["firstBatch"] = doc["data"]
                 else:
                     res["cursor"]["nextBatch"] = doc["data"]
-            command_listeners.publish_command_success(
+            listeners.publish_command_success(
                 duration, res, cmd_name, rqst_id, self.__address)
 
         if from_command and cmd_name != "explain":

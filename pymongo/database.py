@@ -496,7 +496,7 @@ class Database(common.BaseObject):
             res = _first_batch(sock_info, coll.database.name, coll.name,
                                criteria, 0, slave_okay,
                                CodecOptions(), ReadPreference.PRIMARY, cmd,
-                               self.client._command_listeners)
+                               self.client._event_listeners)
             data = res["data"]
             cursor = {
                 "id": res["cursor_id"],
@@ -627,7 +627,7 @@ class Database(common.BaseObject):
                 spec = {"$all": True} if include_all else {}
                 x = helpers._first_batch(sock_info, "admin", "$cmd.sys.inprog",
                     spec, -1, True, self.codec_options,
-                    ReadPreference.PRIMARY, cmd, self.client._command_listeners)
+                    ReadPreference.PRIMARY, cmd, self.client._event_listeners)
                 return x.get('data', [None])[0]
 
     def profiling_level(self):

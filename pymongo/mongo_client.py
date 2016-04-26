@@ -151,13 +151,7 @@ class MongoClient(common.BaseObject):
           - `socketKeepAlive`: (boolean) Whether to send periodic keep-alive
             packets on connected sockets. Defaults to ``False`` (do not send
             keep-alive packets).
-          - `command_listeners`: a list or tuple of command listeners. See
-            :mod:`~pymongo.monitoring` for details.
-          - `server_listeners`: a list or tuple of server listeners. See
-            :mod:`~pymongo.monitoring` for details.
-          - `server_heartbeat_listeners`: a list or tuple of server heartbeat
-            listeners. See :mod:`~pymongo.monitoring` for details.
-          - `topology_listeners`: a list or tuple of topology listeners. See
+          - `event_listeners`: a list or tuple of event listeners. See
             :mod:`~pymongo.monitoring` for details.
 
           | **Write Concern options:**
@@ -355,11 +349,7 @@ class MongoClient(common.BaseObject):
         self.__cursor_manager = CursorManager(self)
         self.__kill_cursors_queue = []
 
-        self._command_listeners = options.pool_options.command_listeners
-        self._server_listeners = options.pool_options.server_listeners
-        shbl = options.pool_options.server_heartbeat_listeners
-        self._server_heartbeat_listeners = shbl
-        self._topology_listeners = options.pool_options.topology_listeners
+        self._event_listeners = options.pool_options.event_listeners
 
         # Cache of existing indexes used by ensure_index ops.
         self.__index_cache = {}
@@ -511,36 +501,12 @@ class MongoClient(common.BaseObject):
         return getattr(server.description, attr_name)
 
     @property
-    def command_listeners(self):
-        """The command listeners registered for this client.
+    def event_listeners(self):
+        """The event listeners registered for this client.
 
         See :mod:`~pymongo.monitoring` for details.
         """
-        return self._command_listeners.command_listeners
-
-    @property
-    def server_listeners(self):
-        """The server listeners registered for this client.
-
-        See :mod:`~pymongo.monitoring` for details.
-        """
-        return self._server_listeners.server_listeners
-
-    @property
-    def server_heartbeat_listeners(self):
-        """The server heartbeat listeners registered for this client.
-
-        See :mod:`~pymongo.monitoring` for details.
-        """
-        return self._server_heartbeat_listeners.server_heartbeat_listeners
-
-    @property
-    def topology_listeners(self):
-        """The topology listeners registered for this client.
-
-        See :mod:`~pymongo.monitoring` for details.
-        """
-        return self._topology_listeners.topology_listeners
+        return self._event_listeners.event_listeners
 
     @property
     def address(self):
@@ -828,7 +794,7 @@ class MongoClient(common.BaseObject):
             operation,
             set_slave_ok,
             self.__all_credentials,
-            self._command_listeners,
+            self._event_listeners,
             exhaust)
 
     def _reset_on_error(self, server, func, *args, **kwargs):
@@ -987,8 +953,8 @@ class MongoClient(common.BaseObject):
 
         # Don't re-open topology if it's closed and there's no pending cursors.
         if address_to_cursor_ids:
-            command_listeners = self._command_listeners
-            publish = command_listeners.enabled
+            listeners = self._event_listeners
+            publish = listeners.enabled_for_commands
             topology = self._get_topology()
             for address, cursor_ids in address_to_cursor_ids.items():
                 try:
@@ -1021,7 +987,7 @@ class MongoClient(common.BaseObject):
                             request_id, msg = message.kill_cursors(cursor_ids)
                             if publish:
                                 duration = datetime.datetime.now() - start
-                                command_listeners.publish_command_start(
+                                listeners.publish_command_start(
                                     spec, db, request_id, address)
                                 start = datetime.datetime.now()
 
@@ -1031,7 +997,7 @@ class MongoClient(common.BaseObject):
                                 if publish:
                                     dur = ((datetime.datetime.now() - start)
                                            + duration)
-                                    command_listeners.publish_command_failure(
+                                    listeners.publish_command_failure(
                                         dur, message._convert_exception(exc),
                                         'killCursors', request_id, address)
                                 raise
@@ -1041,7 +1007,7 @@ class MongoClient(common.BaseObject):
                                             + duration)
                                 # OP_KILL_CURSORS returns no reply, fake one.
                                 reply = {'cursorsUnknown': cursor_ids, 'ok': 1}
-                                command_listeners.publish_command_success(
+                                listeners.publish_command_success(
                                     duration, reply, 'killCursors', request_id,
                                     address)
 
@@ -1193,7 +1159,7 @@ class MongoClient(common.BaseObject):
             else:
                 helpers._first_batch(sock_info, "admin", "$cmd.sys.unlock",
                     {}, -1, True, self.codec_options,
-                    ReadPreference.PRIMARY, cmd, self._command_listeners)
+                    ReadPreference.PRIMARY, cmd, self._event_listeners)
 
     def __enter__(self):
         return self

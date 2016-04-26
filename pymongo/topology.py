@@ -39,20 +39,14 @@ class Topology(object):
     """Monitor a topology of one or more servers."""
     def __init__(self, topology_settings):
         self._topology_id = topology_settings._topology_id
-        tpl = topology_settings._pool_options.topology_listeners
-        self._topology_listeners = tpl
-        self._top_pub = (self._topology_listeners is not None
-                             and self._topology_listeners.enabled)
-        svl = topology_settings._pool_options.server_listeners
-        self._server_listeners = svl
-        self._svr_pub = (self._server_listeners is not None
-                            and self._server_listeners.enabled)
-        if self._top_pub:
-            self._topology_listeners.publish_topology_opened(self._topology_id)
+        self._listeners = topology_settings._pool_options.event_listeners
+        self._pub = self._listeners is not None
+        if self._pub and self._listeners.enabled_for_topology:
+            self._listeners.publish_topology_opened(self._topology_id)
         self._settings = topology_settings
         topology_description = TopologyDescription(
             topology_settings.get_topology_type(),
-            topology_settings.get_server_descriptions(self._server_listeners),
+            topology_settings.get_server_descriptions(self._listeners),
             topology_settings.replica_set_name,
             None,
             None)
@@ -196,15 +190,17 @@ class Topology(object):
 
         # Avoid deadlock by publishing events after releasing the lock in
         # case the event callback code tries to acquire the lock.
-        if old_top_description is not None and self._svr_pub:
+        publish_server = self._pub and self._listeners.enabled_for_server
+        if old_top_description is not None and publish_server:
             old_server_description = old_top_description._server_descriptions[
                 server_description.address]
-            self._server_listeners.publish_server_description_changed(
+            self._listeners.publish_server_description_changed(
                 old_server_description, server_description,
                 server_description.address, self._topology_id)
 
-        if old_top_description is not None and self._top_pub:
-            self._topology_listeners.publish_topology_description_changed(
+        publish_topology = self._pub and self._listeners.enabled_for_topology
+        if old_top_description is not None and publish_topology:
+            self._listeners.publish_topology_description_changed(
                 old_top_description, self._description, self._topology_id)
 
     def get_server_by_address(self, address):
@@ -289,9 +285,8 @@ class Topology(object):
             self._description = self._description.reset()
             self._update_servers()
         # Publish only after releasing the lock.
-        if self._top_pub:
-            self._topology_listeners.publish_topology_closed(
-                self._topology_id)
+        if self._pub and self._listeners.enabled_for_topology:
+            self._listeners.publish_topology_closed(self._topology_id)
 
     @property
     def description(self):
@@ -370,7 +365,7 @@ class Topology(object):
                     server_description=sd,
                     pool=self._create_pool_for_server(address),
                     monitor=monitor,
-                    server_listeners=self._server_listeners,
+                    listeners=self._listeners,
                     topology_id=self._topology_id)
 
                 self._servers[address] = server
@@ -399,10 +394,7 @@ class Topology(object):
             ssl_match_hostname=options.ssl_match_hostname,
             socket_keepalive=True,
             # TODO: include listeners in this PoolOpts?
-            command_listeners=options.command_listeners,
-            server_listeners=options.server_listeners,
-            server_heartbeat_listeners=options.server_heartbeat_listeners,
-            topology_listeners=options.topology_listeners)
+            event_listeners=options.event_listeners)
 
         return self._settings.pool_class(address, monitor_pool_options,
                                          handshake=False)

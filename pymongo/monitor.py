@@ -44,13 +44,8 @@ class Monitor(object):
         self._pool = pool
         self._settings = topology_settings
         self._avg_round_trip_time = MovingAverage()
-        shbl = self._settings._pool_options.server_heartbeat_listeners
-        self._server_heartbeat_listeners = shbl
-        self._shb_pub = (self._server_heartbeat_listeners is not None
-                            and self._server_heartbeat_listeners.enabled)
-        self._server_listeners = self._settings._pool_options.server_listeners
-        self._svr_pub = (self._server_listeners is not None
-                            and self._server_listeners.enabled)
+        self._listeners = self._settings._pool_options.event_listeners
+        self._pub = self._listeners is not None
 
         # We strongly reference the executor and it weakly references us via
         # this closure. When the monitor is freed, stop the executor soon.
@@ -116,7 +111,6 @@ class Monitor(object):
         # to Unknown only after retrying once.
         address = self._server_description.address
         retry = self._server_description.server_type != SERVER_TYPE.Unknown
-        shbl = self._server_heartbeat_listeners
 
         start = _time()
         try:
@@ -128,8 +122,8 @@ class Monitor(object):
             self._topology.reset_pool(address)
             default = ServerDescription(address, error=error)
             if not retry:
-                if self._shb_pub:
-                    shbl.publish_server_heartbeat_failed(
+                if self._pub and self._listeners.enabled_for_server_heartbeat:
+                    self._listeners.publish_server_heartbeat_failed(
                         address, error_time, error)
                 self._avg_round_trip_time.reset()
                 # Server type defaults to Unknown.
@@ -143,8 +137,8 @@ class Monitor(object):
                 raise
             except Exception as error:
                 error_time = _time() - start
-                if self._shb_pub:
-                    shbl.publish_server_heartbeat_failed(
+                if self._pub and self._listeners.enabled_for_server_heartbeat:
+                    self._listeners.publish_server_heartbeat_failed(
                         address, error_time, error)
                 self._avg_round_trip_time.reset()
                 return default
@@ -161,9 +155,8 @@ class Monitor(object):
                 address=self._server_description.address,
                 ismaster=response,
                 round_trip_time=self._avg_round_trip_time.get())
-            if self._shb_pub:
-                shbl = self._server_heartbeat_listeners
-                shbl.publish_server_heartbeat_succeeded(
+            if self._pub and self._listeners.enabled_for_server_heartbeat:
+                self._listeners.publish_server_heartbeat_succeeded(
                     self._server_description.address, round_trip_time,
                     response)
 
@@ -179,9 +172,8 @@ class Monitor(object):
             0, 'admin.$cmd', 0, -1, {'ismaster': 1},
             None, DEFAULT_CODEC_OPTIONS)
 
-        if self._shb_pub:
-            shbl = self._server_heartbeat_listeners
-            shbl.publish_server_heartbeat_started(sock_info.address)
+        if self._pub and self._listeners.enabled_for_server_heartbeat:
+            self._listeners.publish_server_heartbeat_started(sock_info.address)
         # TODO: use sock_info.command()
         sock_info.send_message(msg, max_doc_size)
         raw_response = sock_info.receive_message(1, request_id)
