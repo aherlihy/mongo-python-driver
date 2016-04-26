@@ -150,6 +150,8 @@ class Monitor(object):
         """
         with self._pool.get_socket({}) as sock_info:
             response, round_trip_time = self._check_with_socket(sock_info)
+            if self._pub and self._listeners.enabled_for_server_heartbeat:
+                self._listeners.publish_server_heartbeat_started(sock_info.address)
             self._avg_round_trip_time.add_sample(round_trip_time)
             sd = ServerDescription(
                 address=self._server_description.address,
@@ -172,8 +174,6 @@ class Monitor(object):
             0, 'admin.$cmd', 0, -1, {'ismaster': 1},
             None, DEFAULT_CODEC_OPTIONS)
 
-        if self._pub and self._listeners.enabled_for_server_heartbeat:
-            self._listeners.publish_server_heartbeat_started(sock_info.address)
         # TODO: use sock_info.command()
         sock_info.send_message(msg, max_doc_size)
         raw_response = sock_info.receive_message(1, request_id)
