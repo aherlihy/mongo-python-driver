@@ -222,19 +222,19 @@ def register(listener=None):
     """Register a global event listener.
 
     :Parameters:
-      - `command_listener`: A list or tuple of subclasses of
-       :class:`_EventListener`.
+      - `command_listener`: A subclasses of :class:`_EventListener`.
     """
-    _validate_event_listeners('event_listener', listener)
-    for lsr in listener:
-        if isinstance(lsr, CommandListener):
-            _LISTENERS.command_listeners.append(lsr)
-        if isinstance(lsr, ServerHeartbeatListener):
-            _LISTENERS.server_heartbeat_listeners.append(lsr)
-        if isinstance(lsr, ServerListener):
-            _LISTENERS.server_listeners.append(lsr)
-        if isinstance(lsr, TopologyListener):
-            _LISTENERS.topology_listeners.append(lsr)
+    if not isinstance(listener, _EventListener):
+        raise TypeError("Listeners for %s must be a subclass of "
+                        "_EventListener" % (listener,))
+    if isinstance(listener, CommandListener):
+        _LISTENERS.command_listeners.append(listener)
+    if isinstance(listener, ServerHeartbeatListener):
+        _LISTENERS.server_heartbeat_listeners.append(listener)
+    if isinstance(listener, ServerListener):
+        _LISTENERS.server_listeners.append(listener)
+    if isinstance(listener, TopologyListener):
+        _LISTENERS.topology_listeners.append(listener)
 
 
 def _handle_exception():
