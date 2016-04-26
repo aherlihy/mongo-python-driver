@@ -2003,7 +2003,8 @@ class TestCollection(IntegrationTest):
         # default WriteConcern.
         c_default = db.get_collection('test', write_concern=WriteConcern())
         results = listener.results
-        # Authenticate the client and throw out auth commands from the command_listener.
+        # Authenticate the client and throw out auth commands from the
+        # command_listener.
         db.command('ismaster')
         results.clear()
         try:

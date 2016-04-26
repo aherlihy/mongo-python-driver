@@ -44,7 +44,8 @@ class Monitor(object):
         self._pool = pool
         self._settings = topology_settings
         self._avg_round_trip_time = MovingAverage()
-        self._server_heartbeat_listeners = self._settings._pool_options.server_heartbeat_listeners
+        shbl = self._settings._pool_options.server_heartbeat_listeners
+        self._server_heartbeat_listeners = shbl
         self._shb_pub = (self._server_heartbeat_listeners is not None
                             and self._server_heartbeat_listeners.enabled)
         self._server_listeners = self._settings._pool_options.server_listeners

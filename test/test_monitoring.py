@@ -385,7 +385,8 @@ class TestCommandMonitoring(unittest.TestCase):
     @client_context.require_replica_set
     def test_not_master_error(self):
         address = next(iter(client_context.rs_client.secondaries))
-        client = single_client(*address, command_listeners=[self.command_listener])
+        client = single_client(*address,
+                               command_listeners=[self.command_listener])
         # Clear authentication command results from the command_listener.
         client.admin.command('ismaster')
         self.command_listener.results.clear()
