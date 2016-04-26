@@ -15,8 +15,8 @@
 """Tools to monitor driver events.
 
 Use :func:`register` to register global listeners for specific events.
-Listeners must inherit from the subclass of :class:`EventListener` intended for
-that type of event and implement the correct functions for that class.
+Listeners must inherit from :class:`_EventListener` and implement the correct
+functions for that class.
 
 For example, a simple command logger might be implemented like this::
 
@@ -88,7 +88,7 @@ class CommandListener(_EventListener):
         """Abstract method to handle a `CommandStartedEvent`.
 
         :Parameters:
-          - `event`: An instance of a `CommandStartedEvent` event.
+          - `event`: An instance of :class:`CommandStartedEvent`.
         """
         raise NotImplementedError
 
@@ -96,7 +96,7 @@ class CommandListener(_EventListener):
         """Abstract method to handle a `CommandSucceededEvent`.
 
         :Parameters:
-          - `event`: An instance of a `CommandSucceededEvent` event.
+          - `event`: An instance of :class:`CommandSucceededEvent`.
         """
         raise NotImplementedError
 
@@ -104,7 +104,7 @@ class CommandListener(_EventListener):
         """Abstract method to handle a `CommandFailedEvent`.
 
         :Parameters:
-          - `event`: An instance of a `CommandFailedEvent` event.
+          - `event`: An instance of :class:`CommandFailedEvent`.
         """
         raise NotImplementedError
 
@@ -118,7 +118,7 @@ class ServerHeartbeatListener(_EventListener):
         """Abstract method to handle a `ServerHeartbeatStartedEvent`.
 
         :Parameters:
-          - `event`: An instance of a `ServerHeartbeatStartedEvent` event.
+          - `event`: An instance of :class:`ServerHeartbeatStartedEvent`.
         """
         raise NotImplementedError
 
@@ -126,7 +126,7 @@ class ServerHeartbeatListener(_EventListener):
         """Abstract method to handle a `ServerHeartbeatSucceededEvent`.
 
         :Parameters:
-          - `event`: An instance of a `ServerHeartbeatSucceededEvent` event.
+          - `event`: An instance of :class:`ServerHeartbeatSucceededEvent`.
         """
         raise NotImplementedError
 
@@ -134,7 +134,7 @@ class ServerHeartbeatListener(_EventListener):
         """Abstract method to handle a `ServerHeartbeatFailedEvent`.
 
         :Parameters:
-          - `event`: An instance of a `ServerHeartbeatFailedEvent` event.
+          - `event`: An instance of :class:`ServerHeartbeatFailedEvent`.
         """
         raise NotImplementedError
 
@@ -148,7 +148,7 @@ class TopologyListener(_EventListener):
         """Abstract method to handle a `TopologyOpenedEvent`.
 
         :Parameters:
-          - `event`: An instance of a `TopologyOpenedEvent`.
+          - `event`: An instance of :class:`TopologyOpenedEvent`.
         """
         raise NotImplementedError
 
@@ -156,7 +156,7 @@ class TopologyListener(_EventListener):
         """Abstract method to handle a `TopologyDescriptionChangedEvent`.
 
         :Parameters:
-          - `event`: An instance of a `TopologyDescriptionChangedEvent`.
+          - `event`: An instance of :class:`TopologyDescriptionChangedEvent`.
         """
         raise NotImplementedError
 
@@ -164,7 +164,7 @@ class TopologyListener(_EventListener):
         """Abstract method to handle a `TopologyClosedEvent`.
 
         :Parameters:
-          - `event`: An instance of a `TopologyClosedEvent` event.
+          - `event`: An instance of :class:`TopologyClosedEvent`.
         """
         raise NotImplementedError
 
@@ -178,7 +178,7 @@ class ServerListener(_EventListener):
         """Abstract method to handle a `ServerOpeningEvent`.
 
         :Parameters:
-          - `event`: An instance of a `ServerOpeningEvent`.
+          - `event`: An instance of :class:`ServerOpeningEvent`.
         """
         raise NotImplementedError
 
@@ -186,7 +186,7 @@ class ServerListener(_EventListener):
         """Abstract method to handle a `ServerDescriptionChangedEvent`.
 
         :Parameters:
-          - `event`: An instance of a `ServerDescriptionChangedEvent`.
+          - `event`: An instance of :class:`ServerDescriptionChangedEvent`.
         """
         raise NotImplementedError
 
@@ -194,7 +194,7 @@ class ServerListener(_EventListener):
         """Abstract method to handle a `ServerClosedEvent`.
 
         :Parameters:
-          - `event`: An instance of a `ServerClosedEvent` event.
+          - `event`: An instance of :class:`ServerClosedEvent`.
         """
         raise NotImplementedError
 
@@ -214,8 +214,8 @@ def _validate_event_listeners(option, listeners):
     for listener in listeners:
         if not isinstance(listener, _EventListener):
             raise TypeError("Listeners for %s must be a subclass of "
-                            "CommandListener, ServerHeartbeatListener, "
-                            "TopologyListener, or ServerListener" % (option,))
+                            "_EventListener" % (option,))
+    return listeners
 
 
 def register(listener=None):
@@ -560,55 +560,48 @@ class _EventListeners(object):
         self.__server_listeners = _LISTENERS.server_listeners[:]
         self.__server_heartbeat_listeners = _LISTENERS.server_heartbeat_listeners[:]
         self.__topology_listeners = _LISTENERS.topology_listeners[:]
-        for lst in listeners:
-            if isinstance(lst, CommandListener):
-                self.__command_listeners.extend(lst)
-            if isinstance(lst, ServerListener):
-                self.__server_listeners.extend(lst)
-            if isinstance(lst, ServerHeartbeatListener):
-                self.__server_heartbeat_listeners.extend(lst)
-            if isinstance(lst, TopologyListener):
-                self.__topology_listeners.extend(lst)
-        self.__command_enabled = bool(self.__command_listeners)
-        self.__server_enabled = bool(self.__server_enabled)
-        self.__server_heartbeat_enabled = bool(self.__server_heartbeat_enabled)
-        self.__topology_enabled = bool(self.__topology_enabled)
+        if listeners is not None:
+            for lst in listeners:
+                if isinstance(lst, CommandListener):
+                    self.__command_listeners.append(lst)
+                if isinstance(lst, ServerListener):
+                    self.__server_listeners.append(lst)
+                if isinstance(lst, ServerHeartbeatListener):
+                    self.__server_heartbeat_listeners.append(lst)
+                if isinstance(lst, TopologyListener):
+                    self.__topology_listeners.append(lst)
+        self.__enabled_for_commands = bool(self.__command_listeners)
+        self.__enabled_for_server = bool(self.__server_listeners)
+        self.__enabled_for_server_heartbeat = bool(
+            self.__server_heartbeat_listeners)
+        self.__enabled_for_topology = bool(self.__topology_listeners)
 
     @property
     def enabled_for_commands(self):
         """Are any CommandListener instances registered?"""
-        return self.__command_enabled
+        return self.__enabled_for_commands
 
     @property
     def enabled_for_server(self):
         """Are any ServerListener instances registered?"""
-        return self.__server_enabled
+        return self.__enabled_for_server
 
     @property
     def enabled_for_server_heartbeat(self):
         """Are any ServerHeartbeatListener instances registered?"""
-        return self.__server_heartbeat_enabled
+        return self.__enabled_for_server_heartbeat
 
     @property
     def enabled_for_topology(self):
         """Are any TopologyListener instances registered?"""
-        return self.__topology_enabled
+        return self.__enabled_for_topology
 
-    def command_listeners(self):
-        """List of registered command listeners."""
-        return self.__command_listeners[:]
-
-    def server_listeners(self):
-        """List of registered server listeners."""
-        return self.__server_listeners[:]
-
-    def server_heartbeat_listeners(self):
-        """List of registered server heartbeat listeners."""
-        return self.__server_heartbeat_listeners[:]
-
-    def topology_listeners(self):
-        """List of registered topology listeners."""
-        return self.__command_listeners[:]
+    def event_listeners(self):
+        """List of registered event listeners."""
+        return (self.__command_listeners[:],
+                self.__server_heartbeat_listeners[:],
+                self.__server_listeners[:],
+                self.__topology_listeners[:])
 
     def publish_command_start(self, command, database_name,
                               request_id, connection_id, op_id=None):

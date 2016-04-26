@@ -64,7 +64,10 @@ class EventListener(monitoring.CommandListener):
             self.results['failed'].append(event)
 
 
-class AllEventListener(monitoring._EventListeners):
+class AllEventListener(monitoring.CommandListener,
+                       monitoring.ServerListener,
+                       monitoring.ServerHeartbeatListener,
+                       monitoring.TopologyListener):
     """ Listens to all events."""
 
     def __init__(self):
