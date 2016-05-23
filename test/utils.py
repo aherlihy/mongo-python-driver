@@ -66,7 +66,7 @@ class EventListener(monitoring.CommandListener):
 
 class AllEventListener(monitoring.CommandListener,
                        monitoring.ServerListener,
-                       monitoring.ServerHeartbeatListener,
+                       # monitoring.ServerHeartbeatListener,
                        monitoring.TopologyListener):
     """ Listens to all events."""
 

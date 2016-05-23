@@ -81,7 +81,7 @@ class _EventListener(object):
 
 class CommandListener(_EventListener):
     """Abstract base class for command listeners.
-    Expects `CommandStartedEvent`, `CommandSucceededEvent`,
+    Handles `CommandStartedEvent`, `CommandSucceededEvent`,
     and `CommandFailedEvent`"""
 
     def started(self, event):
@@ -111,7 +111,7 @@ class CommandListener(_EventListener):
 
 class ServerHeartbeatListener(_EventListener):
     """Abstract base class for server heartbeat listeners.
-    Expects `ServerHeartbeatStartedEvent`, `ServerHeartbeatSucceededEvent`,
+    Handles `ServerHeartbeatStartedEvent`, `ServerHeartbeatSucceededEvent`,
     and `ServerHeartbeatFailedEvent`."""
 
     def started(self, event):
@@ -141,7 +141,7 @@ class ServerHeartbeatListener(_EventListener):
 
 class TopologyListener(_EventListener):
     """Abstract base class for topology monitoring listeners.
-    Expects `TopologyOpenedEvent`, `TopologyDescriptionChangedEvent`, and
+    Handles `TopologyOpenedEvent`, `TopologyDescriptionChangedEvent`, and
     `TopologyClosedEvent`."""
 
     def opened(self, event):
@@ -171,7 +171,7 @@ class TopologyListener(_EventListener):
 
 class ServerListener(_EventListener):
     """Abstract base class for server listeners.
-    Expects `ServerOpeningEvent`, `ServerDescriptionChangedEvent`, and
+    Handles `ServerOpeningEvent`, `ServerDescriptionChangedEvent`, and
     `ServerClosedEvent`."""
 
     def opened(self, event):
@@ -213,8 +213,9 @@ def _validate_event_listeners(option, listeners):
         raise TypeError("%s must be a list or tuple" % (option,))
     for listener in listeners:
         if not isinstance(listener, _EventListener):
-            raise TypeError("Listeners for %s must be a subclass of "
-                            "_EventListener" % (option,))
+            raise TypeError("Listeners for %s must be either a "
+                            "CommandListener, ServerHeartbeatListener, "
+                            "ServerListener, or TopologyListener." % (option,))
     return listeners
 
 
@@ -225,8 +226,9 @@ def register(listener=None):
       - `command_listener`: A subclasses of :class:`_EventListener`.
     """
     if not isinstance(listener, _EventListener):
-        raise TypeError("Listeners for %s must be a subclass of "
-                        "_EventListener" % (listener,))
+        raise TypeError("Listeners for %s must be either a "
+                        "CommandListener, ServerHeartbeatListener, "
+                        "ServerListener, or TopologyListener." % (listener,))
     if isinstance(listener, CommandListener):
         _LISTENERS.command_listeners.append(listener)
     if isinstance(listener, ServerHeartbeatListener):

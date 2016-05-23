@@ -46,12 +46,22 @@ class Topology(object):
         self._settings = topology_settings
         topology_description = TopologyDescription(
             topology_settings.get_topology_type(),
-            topology_settings.get_server_descriptions(self._listeners),
+            topology_settings.get_server_descriptions(),
             topology_settings.replica_set_name,
             None,
             None)
 
         self._description = topology_description
+        if self._pub and self._listeners.enabled_for_topology:
+            self._listeners.publish_topology_description_changed(
+                TopologyDescription(
+                    TOPOLOGY_TYPE.Unknown, {}, None, None, None),
+                self._description, self._topology_id)
+        for seed in topology_settings.seeds:
+            if self._pub and self._listeners.enabled_for_server:
+                self._listeners.publish_server_opened(seed, self._topology_id)
+
+
         # Store the seed list to help diagnose errors in _error_message().
         self._seed_addresses = list(topology_description.server_descriptions())
         self._opened = False
