@@ -66,7 +66,6 @@ class EventListener(monitoring.CommandListener):
 
 class AllEventListener(monitoring.CommandListener,
                        monitoring.ServerListener,
-                       # monitoring.ServerHeartbeatListener,
                        monitoring.TopologyListener):
     """ Listens to all events."""
 
@@ -82,14 +81,6 @@ class AllEventListener(monitoring.CommandListener,
     def closed(self, event):
         self.results.append(event)
 
-    def started(self, event):
-        self.results.append(event)
-
-    def succeeded(self, event):
-        self.results.append(event)
-
-    def failed(self, event):
-        self.results.append(event)
 
 def _connection_string_noauth(h, p):
     if h.startswith("mongodb://"):
