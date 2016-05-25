@@ -18,6 +18,7 @@ import os
 import Queue
 import random
 import threading
+import time
 import warnings
 import weakref
 
@@ -39,10 +40,13 @@ from pymongo.server_selectors import (any_server_selector,
 def publish_events(queue):
     while True:
         try:
-            args = queue().get(timeout=1)
-        except ReferenceError:
-            # Topology freed.
-            break
+            q = queue()
+            if q:
+                args = q.get(timeout=1)
+            else:
+                # Topology freed.
+                break
+            time.sleep(1)
         except Queue.Empty:
             pass
         else:
@@ -52,6 +56,9 @@ def publish_events(queue):
             except:
                 # Exception from user code.
                 pass
+
+        # Free Queue if Topology is freed.
+        q = None
 
 
 class Topology(object):
