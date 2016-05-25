@@ -39,7 +39,7 @@ from pymongo.server_selectors import (any_server_selector,
 def publish_events(queue):
     while True:
         try:
-            args = queue().get_nowait()
+            args = queue().get(timeout=1)
         except ReferenceError:
             # Topology freed.
             break
@@ -59,18 +59,20 @@ class Topology(object):
     def __init__(self, topology_settings):
         self._topology_id = topology_settings._topology_id
         self._listeners = topology_settings._pool_options.event_listeners
-        self._pub = self._listeners is not None
+        pub = self._listeners is not None
+        self._publish_server = pub and self._listeners.enabled_for_server
+        self._publish_top = pub and self._listeners.enabled_for_topology
 
         # Create events queue if there are publishers
         self._events = None
-        if self._pub: # TODO: ignore command/heartbeat listeners?
-            self._events = Queue.Queue()
+        if self._publish_server and self._publish_top:
+            self._events = Queue.Queue(maxsize=100)
             weak = weakref.ref(self._events)
             t = threading.Thread(target=lambda: publish_events(weak))
             t.start()
 
 
-        if self._pub and self._listeners.enabled_for_topology:
+        if self._publish_top:
             self._events.put((self._listeners.publish_topology_opened,
                               self._topology_id))
         self._settings = topology_settings
@@ -82,14 +84,14 @@ class Topology(object):
             None)
 
         self._description = topology_description
-        if self._pub and self._listeners.enabled_for_topology:
+        if self._publish_top:
             self._events.put((
                 self._listeners.publish_topology_description_changed,
                 TopologyDescription(
                     TOPOLOGY_TYPE.Unknown, {}, None, None, None),
                 self._description, self._topology_id))
         for seed in topology_settings.seeds:
-            if self._pub and self._listeners.enabled_for_server:
+            if self._publish_server:
                 self._events.put((
                     self._listeners.publish_server_opened, seed,
                     self._topology_id))
@@ -220,33 +222,29 @@ class Topology(object):
             # once. Check if it's still in the description or if some state-
             # change removed it. E.g., we got a host list from the primary
             # that didn't include this server.
-            old_top_description = None
             if self._description.has_server(server_description.address):
-                old_top_description = self._description
+                old_top_desc = self._description
+                if self._publish_server:
+                    old_server_description = old_top_desc._server_descriptions[
+                        server_description.address]
+                    self._events.put((
+                        self._listeners.publish_server_description_changed,
+                        old_server_description, server_description,
+                        server_description.address, self._topology_id))
+
                 self._description = updated_topology_description(
                     self._description, server_description)
+
+                if self._publish_top:
+                    self._events.put((
+                        self._listeners.publish_topology_description_changed,
+                        old_top_desc, self._description, self._topology_id))
 
                 self._update_servers()
 
                 # Wake waiters in select_servers().
                 self._condition.notify_all()
 
-        # Avoid deadlock by publishing events after releasing the lock in
-        # case the event callback code tries to acquire the lock.
-        publish_server = self._pub and self._listeners.enabled_for_server
-        if old_top_description is not None and publish_server:
-            old_server_description = old_top_description._server_descriptions[
-                server_description.address]
-            self._events.put((
-                self._listeners.publish_server_description_changed,
-                old_server_description, server_description,
-                server_description.address, self._topology_id))
-
-        publish_topology = self._pub and self._listeners.enabled_for_topology
-        if old_top_description is not None and publish_topology:
-            self._events.put((
-                self._listeners.publish_topology_description_changed,
-                old_top_description, self._description, self._topology_id))
 
     def get_server_by_address(self, address):
         """Get a Server or None.
@@ -330,7 +328,7 @@ class Topology(object):
             self._description = self._description.reset()
             self._update_servers()
         # Publish only after releasing the lock.
-        if self._pub and self._listeners.enabled_for_topology:
+        if self._publish_top:
             self._events((
                 self._listeners.publish_topology_closed, self._topology_id))
 
