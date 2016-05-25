@@ -15,9 +15,11 @@
 """Internal class to monitor a topology of one or more servers."""
 
 import os
+import Queue
 import random
 import threading
 import warnings
+import weakref
 
 from bson.py3compat import itervalues
 from pymongo import common
@@ -34,6 +36,23 @@ from pymongo.server_selectors import (any_server_selector,
                                       secondary_server_selector,
                                       writable_server_selector)
 
+def publish_events(queue):
+    while True:
+        try:
+            args = queue().get_nowait()
+        except ReferenceError:
+            # Topology freed.
+            break
+        except Queue.Empty:
+            pass
+        else:
+            fn = args[0]
+            try:
+                fn(*args[1:])
+            except:
+                # Exception from user code.
+                pass
+
 
 class Topology(object):
     """Monitor a topology of one or more servers."""
@@ -41,8 +60,19 @@ class Topology(object):
         self._topology_id = topology_settings._topology_id
         self._listeners = topology_settings._pool_options.event_listeners
         self._pub = self._listeners is not None
+
+        # Create events queue if there are publishers
+        self._events = None
+        if self._pub: # TODO: ignore command/heartbeat listeners?
+            self._events = Queue.Queue()
+            weak = weakref.ref(self._events)
+            t = threading.Thread(target=lambda: publish_events(weak))
+            t.start()
+
+
         if self._pub and self._listeners.enabled_for_topology:
-            self._listeners.publish_topology_opened(self._topology_id)
+            self._events.put((self._listeners.publish_topology_opened,
+                              self._topology_id))
         self._settings = topology_settings
         topology_description = TopologyDescription(
             topology_settings.get_topology_type(),
@@ -53,13 +83,16 @@ class Topology(object):
 
         self._description = topology_description
         if self._pub and self._listeners.enabled_for_topology:
-            self._listeners.publish_topology_description_changed(
+            self._events.put((
+                self._listeners.publish_topology_description_changed,
                 TopologyDescription(
                     TOPOLOGY_TYPE.Unknown, {}, None, None, None),
-                self._description, self._topology_id)
+                self._description, self._topology_id))
         for seed in topology_settings.seeds:
             if self._pub and self._listeners.enabled_for_server:
-                self._listeners.publish_server_opened(seed, self._topology_id)
+                self._events.put((
+                    self._listeners.publish_server_opened, seed,
+                    self._topology_id))
 
 
         # Store the seed list to help diagnose errors in _error_message().
@@ -204,14 +237,16 @@ class Topology(object):
         if old_top_description is not None and publish_server:
             old_server_description = old_top_description._server_descriptions[
                 server_description.address]
-            self._listeners.publish_server_description_changed(
+            self._events.put((
+                self._listeners.publish_server_description_changed,
                 old_server_description, server_description,
-                server_description.address, self._topology_id)
+                server_description.address, self._topology_id))
 
         publish_topology = self._pub and self._listeners.enabled_for_topology
         if old_top_description is not None and publish_topology:
-            self._listeners.publish_topology_description_changed(
-                old_top_description, self._description, self._topology_id)
+            self._events.put((
+                self._listeners.publish_topology_description_changed,
+                old_top_description, self._description, self._topology_id))
 
     def get_server_by_address(self, address):
         """Get a Server or None.
@@ -296,7 +331,8 @@ class Topology(object):
             self._update_servers()
         # Publish only after releasing the lock.
         if self._pub and self._listeners.enabled_for_topology:
-            self._listeners.publish_topology_closed(self._topology_id)
+            self._events((
+                self._listeners.publish_topology_closed, self._topology_id))
 
     @property
     def description(self):
