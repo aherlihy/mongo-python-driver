@@ -56,7 +56,7 @@ def publish_events(queue):
         else:
             fn, args = event
             try:
-                fn(*args[1:])
+                fn(*args)
             except:
                 # Exception from user code.
                 pass
@@ -84,7 +84,7 @@ class Topology(object):
 
         if self._publish_tp:
             self._events.put((self._listeners.publish_topology_opened,
-                             (self._topology_id, )))
+                             (self._topology_id,)))
         self._settings = topology_settings
         topology_description = TopologyDescription(
             topology_settings.get_topology_type(),
@@ -338,8 +338,8 @@ class Topology(object):
             self._update_servers()
         # Publish only after releasing the lock.
         if self._publish_tp:
-            self._events.put((
-                self._listeners.publish_topology_closed, (self._topology_id,)))
+            self._events.put((self._listeners.publish_topology_closed,
+                              (self._topology_id,)))
 
     @property
     def description(self):
