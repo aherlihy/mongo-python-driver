@@ -156,15 +156,15 @@ def create_test(scenario_def):
 
         expected_results = scenario_def['phases'][0]['outcome']['events']
 
-        # self.assertEqual(len(expected_results), len(self.all_listener.results))
-        # for i in range(len(expected_results)):
-        #     result = self.all_listener.results[i]
-        #     print result.__class__.__name__
-        #     print "\t%s" % dict((name, getattr(result, name)) for name in dir(result) if not name.startswith('_'))
-        #     compare_events(self, expected_results[i], result)
+        self.assertEqual(len(expected_results), len(self.all_listener.results))
+        for i in range(len(expected_results)):
+            result = self.all_listener.results[i] if len(self.all_listener.results) >= i else None
 
-        for result in self.all_listener.results:
-            print result.__class__.__name__
+            # print "\t%s" % dict((name, getattr(result, name)) for name in dir(result) if not name.startswith('_'))
+            compare_events(self, expected_results[i], result)
+
+        # for result in self.all_listener.results:
+        #     print result.__class__.__name__
 
     return run_scenario
 
