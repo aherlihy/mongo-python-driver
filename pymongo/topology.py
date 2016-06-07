@@ -16,8 +16,8 @@
 
 import os
 import random
+import sys
 import threading
-import time
 import warnings
 import weakref
 
@@ -44,20 +44,30 @@ from pymongo.server_selectors import (any_server_selector,
 def publish_events(queue):
     while True:
         try:
+            if not PY3:
+                # In Python 2.x, the traceback keeps a reference to the queue
+                # until end of the function call. We need to explicitly clear
+                # it, otherwise the queue won't get garbage collected. In
+                # Python 3.x, the reference is only held until the end of the
+                # exception block.
+                sys.exc_clear()
             q = queue()
             if q:
                 event = q.get(timeout=1)
             else:
-                # Topology freed.
+                # Topology freed. If the Topology is freed before the events
+                # are published, the events will be lost.
                 break
-            time.sleep(1)
         except Queue.Empty:
-            pass
+            q = None
         else:
             fn, args = event
             try:
                 fn(*args)
-            except:
+                if "topology_closed" in str(fn):
+                    # Stop thread when topology is closed.
+                    break
+            except Exception:
                 # Exception from user code.
                 pass
 
@@ -76,11 +86,10 @@ class Topology(object):
 
         # Create events queue if there are publishers.
         self._events = None
+        self._events_thread = None
+
         if self._publish_server and self._publish_tp:
             self._events = Queue.Queue(maxsize=100)
-            weak = weakref.ref(self._events)
-            t = threading.Thread(target=lambda: publish_events(weak))
-            t.start()
 
         if self._publish_tp:
             self._events.put((self._listeners.publish_topology_opened,
@@ -244,12 +253,12 @@ class Topology(object):
                 self._description = updated_topology_description(
                     self._description, server_description)
 
+                self._update_servers()
+
                 if self._publish_tp:
                     self._events.put((
                         self._listeners.publish_topology_description_changed,
                         (td_old, self._description, self._topology_id)))
-
-                self._update_servers()
 
                 # Wake waiters in select_servers().
                 self._condition.notify_all()
@@ -353,6 +362,14 @@ class Topology(object):
         if not self._opened:
             self._opened = True
             self._update_servers()
+
+            # Start or restart the events publishing thread.
+            if self._publish_tp and (not self._events_thread
+                                     or not self._events_thread.isAlive()):
+                weak = weakref.ref(self._events)
+                self._events_thread = threading.Thread(
+                    target=lambda: publish_events(weak))
+                self._events_thread.start()
         else:
             # Restart monitors if we forked since previous call.
             for server in itervalues(self._servers):
@@ -414,12 +431,16 @@ class Topology(object):
                     pool=self._create_pool_for_monitor(address),
                     topology_settings=self._settings)
 
+                weak = None
+                if self._publish_server:
+                    weak = weakref.ref(self._events)
                 server = Server(
                     server_description=sd,
                     pool=self._create_pool_for_server(address),
                     monitor=monitor,
+                    topology_id=self._topology_id,
                     listeners=self._listeners,
-                    topology_id=self._topology_id)
+                    events= weak)
 
                 self._servers[address] = server
                 server.open()

@@ -48,7 +48,59 @@ def compare_server_descriptions(self, expected, actual):
     self.assertEqual(expected_hosts, set("%s:%s" % s for s in actual.all_hosts))
 
 
+def pretty_print(to_print, indent=0):
+    old_ws = "\t" + " " * indent
+    print old_ws + "{"
+    indent+=2
+    ws = "\t" + " " * indent
+
+    for key in sorted(to_print.keys()):
+        if isinstance(to_print[key], dict):
+            print ws + "%s:" % key
+            pretty_print(to_print[key], indent=indent+2)
+
+        if isinstance(to_print[key], list):
+            if not to_print[key] or not isinstance(to_print[key][0], dict):
+                print ws + str(to_print[key])
+            else:
+                print ws + "%s: [" % key
+                for item in to_print[key]:
+                    pretty_print(item, indent=indent+2)
+                    if item == to_print[key][-1]:
+                        print ws + "],"
+        else:
+            print ws + "%s:%s," % (key, to_print[key])
+
+        if key == sorted(to_print.keys())[-1]:
+            print old_ws + "}"
+
+def print_topology(expected, actual):
+    print("\tCOMPARING:")
+
+    actual_dict = {"topologyType": actual._topology_type,
+                   "setName": actual._replica_set_name,
+                   "servers": [{"type": a.server_type,
+                                "all_hosts": a.all_hosts,
+                                "setName": a.replica_set_name,
+                                "primary": a.primary,
+                                "address": a.address} for a in actual.server_descriptions().values()]}
+    import copy
+    expected_dict = copy.deepcopy(expected)
+
+    for server_dict in expected_dict['servers']:
+        server_dict['all_hosts'] = set(server_dict['arbiters'] + server_dict['passives'] + server_dict['hosts'])
+        server_dict.pop('arbiters')
+        server_dict.pop('passives')
+        server_dict.pop('hosts')
+    print "\tACTUAL"
+    pretty_print(actual_dict)
+    print "\tEXPECTED"
+    pretty_print(expected_dict)
+
+
 def compare_topology_descriptions(self, expected, actual):
+    # print_topology(expected, actual)
+
     self.assertEqual(TOPOLOGY_TYPE.__getattribute__(expected['topologyType']), actual.topology_type)
     expected = expected['servers']
     actual = actual.server_descriptions()
@@ -105,6 +157,9 @@ class TestAllScenarios(unittest.TestCase):
     @classmethod
     def tearDown(cls):
         monitoring._LISTENERS = cls.saved_listeners
+        import gc
+        gc.collect(generation=2)
+
 
 def create_test(scenario_def):
     def run_scenario(self):
@@ -139,7 +194,7 @@ def create_test(scenario_def):
 
             def _run(self):
                 try:
-                    response = responses.next()[1]
+                    response = next(responses)[1]
                     isMaster = IsMaster(response)
                     self._server_description = ServerDescription(
                         address=self._server_description.address,
@@ -154,18 +209,27 @@ def create_test(scenario_def):
                           _monitor_class=MockMonitor)
         time.sleep(3)  # Need executor to run.
 
-        expected_results = scenario_def['phases'][0]['outcome']['events']
+        try:
+            print
+            expected_results = scenario_def['phases'][0]['outcome']['events']
 
-        self.assertEqual(len(expected_results), len(self.all_listener.results))
-        for i in range(len(expected_results)):
-            result = self.all_listener.results[i] if len(self.all_listener.results) >= i else None
+            self.assertEqual(len(expected_results), len(self.all_listener.results))
+            for i in range(len(expected_results)):
+                print
+                result = self.all_listener.results[i] if len(self.all_listener.results) >= i else None
+                if result:
+                    print "GOT:", result.__class__.__name__
+                else:
+                    print "GOT: NONE"
+                print "EXP:", expected_results[i].keys()[0]
 
-            # print "\t%s" % dict((name, getattr(result, name)) for name in dir(result) if not name.startswith('_'))
-            compare_events(self, expected_results[i], result)
+                # print "\t%s" % dict((name, getattr(result, name)) for name in dir(result) if not name.startswith('_'))
+                compare_events(self, expected_results[i], result)
 
-        # for result in self.all_listener.results:
-        #     print result.__class__.__name__
-
+            # for result in self.all_listener.results:
+            #     print(result.__class__.__name__)
+        finally:
+            m.close()
     return run_scenario
 
 
