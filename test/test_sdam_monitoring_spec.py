@@ -172,7 +172,7 @@ def create_test(scenario_def):
         m = single_client(h=scenario_def['uri'],
                           event_listeners=(self.all_listener,),
                           _monitor_class=MockMonitor)
-        time.sleep(3)  # Need executor to run.
+        time.sleep(7)  # Need executor to run.
 
         try:
             expected_results = scenario_def['phases'][0]['outcome']['events']
