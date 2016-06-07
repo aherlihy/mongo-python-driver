@@ -41,7 +41,7 @@ from pymongo.server_selectors import (any_server_selector,
                                       secondary_server_selector,
                                       writable_server_selector)
 
-def publish_events(queue):
+def events_queue_ref(queue):
     while True:
         try:
             if not PY3:
@@ -88,7 +88,7 @@ class Topology(object):
         self._events = None
         self._events_thread = None
 
-        if self._publish_server and self._publish_tp:
+        if self._publish_server or self._publish_tp:
             self._events = Queue.Queue(maxsize=100)
 
         if self._publish_tp:
@@ -368,7 +368,7 @@ class Topology(object):
                                      or not self._events_thread.isAlive()):
                 weak = weakref.ref(self._events)
                 self._events_thread = threading.Thread(
-                    target=lambda: publish_events(weak))
+                    target=events_queue_ref, args=(weak,))
                 self._events_thread.start()
         else:
             # Restart monitors if we forked since previous call.

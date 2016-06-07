@@ -43,13 +43,17 @@ _TEST_PATH = os.path.join(
 
 def compare_server_descriptions(self, expected, actual):
     self.assertEqual(expected['address'], "%s:%s" % actual.address)
-    self.assertEqual(SERVER_TYPE.__getattribute__(expected['type']), actual.server_type)
-    expected_hosts = set(expected['arbiters'] + expected['passives'] + expected['hosts'])
-    self.assertEqual(expected_hosts, set("%s:%s" % s for s in actual.all_hosts))
+    self.assertEqual(
+        SERVER_TYPE.__getattribute__(expected['type']), actual.server_type)
+    expected_hosts = set(
+        expected['arbiters'] + expected['passives'] + expected['hosts'])
+    self.assertEqual(expected_hosts,
+                     set("%s:%s" % s for s in actual.all_hosts))
 
 
 def compare_topology_descriptions(self, expected, actual):
-    self.assertEqual(TOPOLOGY_TYPE.__getattribute__(expected['topologyType']), actual.topology_type)
+    self.assertEqual(TOPOLOGY_TYPE.__getattribute__(expected['topologyType']),
+                     actual.topology_type)
     expected = expected['servers']
     actual = actual.server_descriptions()
     self.assertEqual(len(expected), len(actual))
@@ -59,7 +63,9 @@ def compare_topology_descriptions(self, expected, actual):
             if "%s:%s" % address == exp_server['address']:
                 found = True
                 compare_server_descriptions(self, exp_server, actual_server)
-        self.assertTrue(found, "Error: expected server not found in actual results")
+        self.assertTrue(found,
+                        "Error: expected server not found in actual results")
+
 
 def compare_events(self, expected_dict, actual):
     expected_type, expected = expected_dict.popitem()
@@ -69,10 +75,13 @@ def compare_events(self, expected_dict, actual):
         self.assertEqual(expected['address'], "%s:%s" % actual.server_address)
 
     elif expected_type == "server_description_changed_event":
-        self.assertTrue(isinstance(actual, monitoring.ServerDescriptionChangedEvent))
+        self.assertTrue(isinstance(actual,
+                                   monitoring.ServerDescriptionChangedEvent))
         self.assertEqual(expected['address'], "%s:%s" % actual.server_address)
-        compare_server_descriptions(self, expected['newDescription'], actual.new_description)
-        compare_server_descriptions(self, expected['previousDescription'], actual.previous_description)
+        compare_server_descriptions(self, expected['newDescription'],
+                                    actual.new_description)
+        compare_server_descriptions(self, expected['previousDescription'],
+                                    actual.previous_description)
 
     elif expected_type == "server_closed_event":
         self.assertTrue(isinstance(actual, monitoring.ServerClosedEvent))
@@ -82,15 +91,21 @@ def compare_events(self, expected_dict, actual):
         self.assertTrue(isinstance(actual, monitoring.TopologyOpenedEvent))
 
     elif expected_type == "topology_description_changed_event":
-        self.assertTrue(isinstance(actual, monitoring.TopologyDescriptionChangedEvent))
-        compare_topology_descriptions(self, expected['newDescription'], actual.new_description)
-        compare_topology_descriptions(self, expected['previousDescription'], actual.previous_description)
+        self.assertTrue(isinstance(actual,
+                                   monitoring.TopologyDescriptionChangedEvent))
+        compare_topology_descriptions(self, expected['newDescription'],
+                                      actual.new_description)
+        compare_topology_descriptions(self, expected['previousDescription'],
+                                      actual.previous_description)
 
     elif expected_type == "topology_closed_event":
         self.assertTrue(isinstance(actual, monitoring.TopologyClosedEvent))
 
     else:
-        self.assertTrue(False, "Incorrect event: expected %s, actual %s" % (expected_type, actual))
+        self.assertTrue(
+            False,
+            "Incorrect event: expected %s, actual %s" % (expected_type, actual)
+        )
 
 
 class TestAllScenarios(unittest.TestCase):
@@ -124,13 +139,15 @@ def create_test(scenario_def):
                 self._settings = topology_settings
                 self._avg_round_trip_time = MovingAverage()
                 self._listeners = self._settings._pool_options.event_listeners
-                self._pub = self._listeners is not None
+                self._publish = self._listeners is not None
+
                 def target():
                     monitor = self_ref()
                     if monitor is None:
                         return False
                     MockMonitor._run(monitor)  # Only change.
                     return True
+
                 executor = periodic_executor.PeriodicExecutor(
                     interval=common.HEARTBEAT_FREQUENCY,
                     min_interval=common.MIN_HEARTBEAT_INTERVAL,
@@ -160,9 +177,11 @@ def create_test(scenario_def):
         try:
             expected_results = scenario_def['phases'][0]['outcome']['events']
 
-            self.assertEqual(len(expected_results), len(self.all_listener.results))
+            self.assertEqual(len(expected_results),
+                             len(self.all_listener.results))
             for i in range(len(expected_results)):
-                result = self.all_listener.results[i] if len(self.all_listener.results) >= i else None
+                result = self.all_listener.results[i] if len(
+                    self.all_listener.results) >= i else None
                 compare_events(self, expected_results[i], result)
 
         finally:

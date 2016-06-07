@@ -45,7 +45,8 @@ class Monitor(object):
         self._settings = topology_settings
         self._avg_round_trip_time = MovingAverage()
         self._listeners = self._settings._pool_options.event_listeners
-        self._pub = self._listeners is not None
+        pub = self._listeners is not None
+        self._publish = pub and self._listeners.enabled_for_server_heartbeat
 
         # We strongly reference the executor and it weakly references us via
         # this closure. When the monitor is freed, stop the executor soon.
@@ -112,7 +113,7 @@ class Monitor(object):
         address = self._server_description.address
         retry = self._server_description.server_type != SERVER_TYPE.Unknown
 
-        if self._pub and self._listeners.enabled_for_server_heartbeat:
+        if self._publish:
             self._listeners.publish_server_heartbeat_started(address)
         start = _time()
         try:
@@ -124,7 +125,7 @@ class Monitor(object):
             self._topology.reset_pool(address)
             default = ServerDescription(address, error=error)
             if not retry:
-                if self._pub and self._listeners.enabled_for_server_heartbeat:
+                if self._publish:
                     self._listeners.publish_server_heartbeat_failed(
                         address, error_time, error)
                 self._avg_round_trip_time.reset()
@@ -139,7 +140,7 @@ class Monitor(object):
                 raise
             except Exception as error:
                 error_time = _time() - start
-                if self._pub and self._listeners.enabled_for_server_heartbeat:
+                if self._publish:
                     self._listeners.publish_server_heartbeat_failed(
                         address, error_time, error)
                 self._avg_round_trip_time.reset()
@@ -157,7 +158,7 @@ class Monitor(object):
                 address=self._server_description.address,
                 ismaster=response,
                 round_trip_time=self._avg_round_trip_time.get())
-            if self._pub and self._listeners.enabled_for_server_heartbeat:
+            if self._publish:
                 self._listeners.publish_server_heartbeat_succeeded(
                     self._server_description.address, round_trip_time,
                     response)

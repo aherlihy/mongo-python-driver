@@ -15,8 +15,8 @@
 """Tools to monitor driver events.
 
 Use :func:`register` to register global listeners for specific events.
-Listeners must inherit from :class:`_EventListener` and implement the correct
-functions for that class.
+Listeners must inherit from one of the abstract classes below and implement
+the correct functions for that class.
 
 For example, a simple command logger might be implemented like this::
 
@@ -40,7 +40,7 @@ For example, a simple command logger might be implemented like this::
         def failed(self, event):
             logging.info("Command {0.command_name} with request id "
                          "{0.request_id} on server {0.connection_id} "
-                         "failed in {s".format(event))
+                         "failed in {s}".format(event))
 
     monitoring.register(CommandLogger())
 
@@ -268,10 +268,10 @@ class _CommandEvent(object):
 
     __slots__ = ("__cmd_name", "__rqst_id", "__conn_id", "__op_id")
 
-    def __init__(self, command_name, request_id, address, operation_id):
+    def __init__(self, command_name, request_id, connection_id, operation_id):
         self.__cmd_name = command_name
         self.__rqst_id = request_id
-        self.__conn_id = address
+        self.__conn_id = connection_id
         self.__op_id = operation_id
 
     @property
@@ -285,7 +285,7 @@ class _CommandEvent(object):
         return self.__rqst_id
 
     @property
-    def address(self):
+    def connection_id(self):
         """The address (host, port) of the server this command was sent to."""
         return self.__conn_id
 
@@ -302,7 +302,7 @@ class CommandStartedEvent(_CommandEvent):
       - `command`: The command document.
       - `database_name`: The name of the database this command was run against.
       - `request_id`: The request id for this operation.
-      - `address`: The address (host, port) of the server this command
+      - `connection_id`: The address (host, port) of the server this command
         was sent to.
       - `operation_id`: An optional identifier for a series of related events.
     """
@@ -339,16 +339,16 @@ class CommandSucceededEvent(_CommandEvent):
       - `reply`: The server reply document.
       - `command_name`: The command name.
       - `request_id`: The request id for this operation.
-      - `address`: The address (host, port) of the server this command
+      - `connection_id`: The address (host, port) of the server this command
         was sent to.
       - `operation_id`: An optional identifier for a series of related events.
     """
     __slots__ = ("__duration_micros", "__reply")
 
     def __init__(self, duration, reply, command_name,
-                 request_id, address, operation_id):
+                 request_id, connection_id, operation_id):
         super(CommandSucceededEvent, self).__init__(
-            command_name, request_id, address, operation_id)
+            command_name, request_id, connection_id, operation_id)
         self.__duration_micros = _to_micros(duration)
         if command_name.lower() in _SENSITIVE_COMMANDS:
             self.__reply = {}
@@ -374,7 +374,7 @@ class CommandFailedEvent(_CommandEvent):
       - `failure`: The server reply document.
       - `command_name`: The command name.
       - `request_id`: The request id for this operation.
-      - `address`: The address (host, port) of the server this command
+      - `connection_id`: The address (host, port) of the server this command
         was sent to.
       - `operation_id`: An optional identifier for a series of related events.
     """
@@ -491,16 +491,16 @@ class TopologyClosedEvent(TopologyEvent):
 class _ServerHeartbeatEvent(object):
     """Base class for server heartbeat events"""
 
-    __slots__ = ('__address')
+    __slots__ = ('__connection_id')
 
-    def __init__(self, address):
-        self.__address = address
+    def __init__(self, connection_id):
+        self.__connection_id = connection_id
 
     @property
-    def address(self):
+    def connection_id(self):
         """"The address (host, port) of the server this heartbeat was sent
          to."""
-        return self.__address
+        return self.__connection_id
 
 
 class ServerHeartbeatStartedEvent(_ServerHeartbeatEvent):
@@ -675,49 +675,49 @@ class _EventListeners(object):
             except Exception:
                 _handle_exception()
 
-    def publish_server_heartbeat_started(self, address):
+    def publish_server_heartbeat_started(self, connection_id):
         """Publish a ServerHeartbeatStartedEvent to all server heartbeat
         listeners.
 
         :Parameters:
-         - `address`: The address (host/port pair) of the connection.
+         - `connection_id`: The address (host/port pair) of the connection.
         """
-        event = ServerHeartbeatStartedEvent(address)
+        event = ServerHeartbeatStartedEvent(connection_id)
         for subscriber in self.__server_heartbeat_listeners:
             try:
                 subscriber.started(event)
             except Exception:
                 _handle_exception()
 
-    def publish_server_heartbeat_succeeded(self, address, duration,
+    def publish_server_heartbeat_succeeded(self, connection_id, duration,
                                            reply):
         """Publish a ServerHeartbeatSucceededEvent to all server heartbeat
         listeners.
 
         :Parameters:
-         - `address`: The address (host/port pair) of the connection.
+         - `connection_id`: The address (host/port pair) of the connection.
          - `duration`: The execution time of the event in the highest possible
             resolution for the platform.
          - `reply`: The command reply.
          """
-        event = ServerHeartbeatSucceededEvent(duration, reply, address)
+        event = ServerHeartbeatSucceededEvent(duration, reply, connection_id)
         for subscriber in self.__server_heartbeat_listeners:
             try:
                 subscriber.succeeded(event)
             except Exception:
                 _handle_exception()
 
-    def publish_server_heartbeat_failed(self, address, duration, reply):
+    def publish_server_heartbeat_failed(self, connection_id, duration, reply):
         """Publish a ServerHeartbeatFailedEvent to all server heartbeat
         listeners.
 
         :Parameters:
-         - `address`: The address (host/port pair) of the connection.
+         - `connection_id`: The address (host/port pair) of the connection.
          - `duration`: The execution time of the event in the highest possible
             resolution for the platform.
          - `reply`: The command reply.
          """
-        event = ServerHeartbeatSucceededEvent(duration, reply, address)
+        event = ServerHeartbeatSucceededEvent(duration, reply, connection_id)
         for subscriber in self.__server_heartbeat_listeners:
             try:
                 subscriber.failed(event)
