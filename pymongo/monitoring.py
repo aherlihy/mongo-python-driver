@@ -40,7 +40,8 @@ For example, a simple command logger might be implemented like this::
         def failed(self, event):
             logging.info("Command {0.command_name} with request id "
                          "{0.request_id} on server {0.connection_id} "
-                         "failed in {s}".format(event))
+                         "failed in {0.duration_micros} "
+                         "microseconds".format(event))
 
     monitoring.register(CommandLogger())
 
@@ -219,11 +220,13 @@ def _validate_event_listeners(option, listeners):
     return listeners
 
 
-def register(listener=None):
+def register(listener):
     """Register a global event listener.
 
     :Parameters:
-      - `command_listener`: A subclasses of :class:`_EventListener`.
+      - `listener`: A subclasses of :class:`CommandListener,`
+        :class:`ServerHeartbeatListener, :class:`ServerListener, or
+        :class:`TopologyListener.
     """
     if not isinstance(listener, _EventListener):
         raise TypeError("Listeners for %s must be either a "

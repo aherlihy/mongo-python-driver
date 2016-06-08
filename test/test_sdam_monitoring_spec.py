@@ -1,4 +1,4 @@
-# Copyright 2015 MongoDB, Inc.
+# Copyright 2016 MongoDB, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,7 +17,6 @@
 import json
 import os
 import sys
-import time
 import weakref
 
 sys.path[0:0] = [""]
@@ -33,7 +32,7 @@ from pymongo.server_description import ServerDescription
 from pymongo.server_type import SERVER_TYPE
 from pymongo.topology import TOPOLOGY_TYPE
 from test import unittest, client_context
-from test.utils import single_client, AllEventListener
+from test.utils import AllEventListener, single_client, wait_until
 
 # Location of JSON test specifications.
 _TEST_PATH = os.path.join(
@@ -120,8 +119,6 @@ class TestAllScenarios(unittest.TestCase):
     @classmethod
     def tearDown(cls):
         monitoring._LISTENERS = cls.saved_listeners
-        import gc
-        gc.collect(generation=2)
 
 
 def create_test(scenario_def):
@@ -172,14 +169,15 @@ def create_test(scenario_def):
         m = single_client(h=scenario_def['uri'],
                           event_listeners=(self.all_listener,),
                           _monitor_class=MockMonitor)
-        time.sleep(7)  # Need executor to run.
+
+        expected_results = scenario_def['phases'][0]['outcome']['events']
+
+        expected_len = len(expected_results)
+        wait_until(lambda: len(self.all_listener.results) == expected_len,
+                   "publish all events", timeout=15)
 
         try:
-            expected_results = scenario_def['phases'][0]['outcome']['events']
-
-            self.assertEqual(len(expected_results),
-                             len(self.all_listener.results))
-            for i in range(len(expected_results)):
+            for i in range(expected_len):
                 result = self.all_listener.results[i] if len(
                     self.all_listener.results) >= i else None
                 compare_events(self, expected_results[i], result)

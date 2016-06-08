@@ -113,8 +113,6 @@ class Monitor(object):
         address = self._server_description.address
         retry = self._server_description.server_type != SERVER_TYPE.Unknown
 
-        if self._publish:
-            self._listeners.publish_server_heartbeat_started(address)
         start = _time()
         try:
             return self._check_once()
@@ -151,17 +149,19 @@ class Monitor(object):
 
         Returns a ServerDescription, or raises an exception.
         """
+        address = self._server_description.address
+        if self._publish:
+            self._listeners.publish_server_heartbeat_started(address)
         with self._pool.get_socket({}) as sock_info:
             response, round_trip_time = self._check_with_socket(sock_info)
             self._avg_round_trip_time.add_sample(round_trip_time)
             sd = ServerDescription(
-                address=self._server_description.address,
+                address=address,
                 ismaster=response,
                 round_trip_time=self._avg_round_trip_time.get())
             if self._publish:
                 self._listeners.publish_server_heartbeat_succeeded(
-                    self._server_description.address, round_trip_time,
-                    response)
+                    address, round_trip_time, response)
 
             return sd
 

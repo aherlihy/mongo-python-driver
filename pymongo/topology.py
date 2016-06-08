@@ -45,11 +45,12 @@ def events_queue_ref(queue):
     while True:
         try:
             if not PY3:
-                # In Python 2.x, the traceback keeps a reference to the queue
-                # until end of the function call. We need to explicitly clear
-                # it, otherwise the queue won't get garbage collected. In
-                # Python 3.x, the reference is only held until the end of the
-                # exception block.
+                # In Python 2.x, exc_info keeps references to the most recent
+                # exception until the end of the function call. Since
+                # the traceback from Queue.Empty keeps a reference to the
+                # queue, we need to explicitly clear exc_info, otherwise the
+                # queue won't get garbage collected. In Python 3.x, the
+                # reference is only held until the end of the exception block.
                 sys.exc_clear()
             q = queue()
             if q:
@@ -262,7 +263,6 @@ class Topology(object):
 
                 # Wake waiters in select_servers().
                 self._condition.notify_all()
-
 
     def get_server_by_address(self, address):
         """Get a Server or None.
