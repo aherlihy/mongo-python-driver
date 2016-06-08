@@ -17,6 +17,7 @@
 import json
 import os
 import sys
+import time
 import weakref
 
 sys.path[0:0] = [""]
@@ -173,13 +174,14 @@ def create_test(scenario_def):
         expected_results = scenario_def['phases'][0]['outcome']['events']
 
         expected_len = len(expected_results)
-        wait_until(lambda: len(self.all_listener.results) == expected_len,
-                   "publish all events", timeout=15)
+        # wait_until(lambda: len(self.all_listener.results) == expected_len,
+        #            "publish all events", timeout=15)
+        time.sleep(7)
 
         try:
             for i in range(expected_len):
                 result = self.all_listener.results[i] if len(
-                    self.all_listener.results) >= i else None
+                    self.all_listener.results) > i else None
                 compare_events(self, expected_results[i], result)
 
         finally:

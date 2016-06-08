@@ -720,7 +720,7 @@ class _EventListeners(object):
             resolution for the platform.
          - `reply`: The command reply.
          """
-        event = ServerHeartbeatSucceededEvent(duration, reply, connection_id)
+        event = ServerHeartbeatFailedEvent(duration, reply, connection_id)
         for subscriber in self.__server_heartbeat_listeners:
             try:
                 subscriber.failed(event)

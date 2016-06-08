@@ -67,7 +67,7 @@ class EventListener(monitoring.CommandListener):
 class AllEventListener(monitoring.CommandListener,
                        monitoring.ServerListener,
                        monitoring.TopologyListener):
-    """ Listens to all events."""
+    """Listens to all events."""
 
     def __init__(self):
         self.results = []
@@ -79,6 +79,22 @@ class AllEventListener(monitoring.CommandListener,
         self.results.append(event)
 
     def closed(self, event):
+        self.results.append(event)
+
+
+class HeartbeatEventListener(monitoring.ServerHeartbeatListener):
+    """Listens to only server heartbeat events."""
+
+    def __init__(self):
+        self.results = []
+
+    def started(self, event):
+        self.results.append(event)
+
+    def succeeded(self, event):
+        self.results.append(event)
+
+    def failed(self, event):
         self.results.append(event)
 
 
