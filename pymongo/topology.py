@@ -108,7 +108,6 @@ class Topology(object):
 
         if self._publish_server or self._publish_tp:
             def target():
-                weak = weakref.ref(self._events)
                 if weak is None:
                     return False  # Stop the executor.
                 events_queue_ref(weak)
@@ -120,8 +119,10 @@ class Topology(object):
                 target=target,
                 name="pymongo_events_thread")
 
-            # We strongly reference the executor and it weakly references us via
-            # this closure. When the client is freed, stop the executor soon.
+            # We strongly reference the executor and it weakly references
+            # the queue via this closure. When the topology is freed, stop
+            # the executor soon.
+            weak = weakref.ref(self._events)
             self.__events_executor = executor
             executor.open()
 
