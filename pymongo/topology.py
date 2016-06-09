@@ -28,6 +28,7 @@ else:
     import Queue
 
 from pymongo import common
+from pymongo import periodic_executor
 from pymongo.pool import PoolOptions
 from pymongo.topology_description import (updated_topology_description,
                                           TOPOLOGY_TYPE,
@@ -44,36 +45,17 @@ from pymongo.server_selectors import (any_server_selector,
 def events_queue_ref(queue):
     while True:
         try:
-            if not PY3:
-                # In Python 2.x, exc_info keeps references to the most recent
-                # exception until the end of the function call. Since
-                # the traceback from Queue.Empty keeps a reference to the
-                # queue, we need to explicitly clear exc_info, otherwise the
-                # queue won't get garbage collected. In Python 3.x, the
-                # reference is only held until the end of the exception block.
-                sys.exc_clear()
             q = queue()
-            if q:
-                event = q.get(timeout=1)
-            else:
-                # Topology freed. If the Topology is freed before the events
-                # are published, the events will be lost.
-                break
+            event = q.get(timeout=1)
         except Queue.Empty:
-            q = None
+            pass
         else:
             fn, args = event
             try:
                 fn(*args)
-                if "topology_closed" in str(fn):
-                    # Stop thread when topology is closed.
-                    break
             except Exception:
                 # Exception from user code.
                 pass
-
-        # Free Queue if Topology is freed.
-        q = None
 
 
 class Topology(object):
@@ -123,6 +105,25 @@ class Topology(object):
         self._condition = self._settings.condition_class(self._lock)
         self._servers = {}
         self._pid = None
+
+        if self._publish_server or self._publish_tp:
+            def target():
+                weak = weakref.ref(self._events)
+                if weak is None:
+                    return False  # Stop the executor.
+                events_queue_ref(weak)
+                return True
+
+            executor = periodic_executor.PeriodicExecutor(
+                interval=common.EVENTS_QUEUE_FREQUENCY,
+                min_interval=0.5,
+                target=target,
+                name="pymongo_events_thread")
+
+            # We strongly reference the executor and it weakly references us via
+            # this closure. When the client is freed, stop the executor soon.
+            self.__events_executor = executor
+            executor.open()
 
     def open(self):
         """Start monitoring, or restart after a fork.
@@ -349,6 +350,9 @@ class Topology(object):
         if self._publish_tp:
             self._events.put((self._listeners.publish_topology_closed,
                               (self._topology_id,)))
+        if self._publish_server or self._publish_tp:
+            self.__events_executor.close()
+
 
     @property
     def description(self):
@@ -364,12 +368,8 @@ class Topology(object):
             self._update_servers()
 
             # Start or restart the events publishing thread.
-            if self._publish_tp and (not self._events_thread
-                                     or not self._events_thread.isAlive()):
-                weak = weakref.ref(self._events)
-                self._events_thread = threading.Thread(
-                    target=events_queue_ref, args=(weak,))
-                self._events_thread.start()
+            if self._publish_tp or self._publish_server:
+                self.__events_executor.open()
         else:
             # Restart monitors if we forked since previous call.
             for server in itervalues(self._servers):

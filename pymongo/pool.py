@@ -171,7 +171,7 @@ class SocketInfo(object):
         self.max_write_batch_size = (
             ismaster.max_write_batch_size if ismaster else None)
 
-        self.command_listeners = pool.opts.event_listeners
+        self.listeners = pool.opts.event_listeners
 
         if ismaster:
             self.is_mongos = ismaster.server_type == SERVER_TYPE.Mongos
@@ -209,7 +209,7 @@ class SocketInfo(object):
             return command(self.sock, dbname, spec, slave_ok,
                            self.is_mongos, read_preference, codec_options,
                            check, allowable_errors, self.address,
-                           check_keys, self.command_listeners,
+                           check_keys, self.listeners,
                            self.max_bson_size, read_concern)
         except OperationFailure:
             raise
