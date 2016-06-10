@@ -552,6 +552,7 @@ class ServerHeartbeatFailedEvent(_ServerHeartbeatEvent):
         """The command reply."""
         return self.__reply
 
+
 class _EventListeners(object):
     """Configure event listeners for a client instance.
 
@@ -563,7 +564,8 @@ class _EventListeners(object):
     def __init__(self, listeners):
         self.__command_listeners = _LISTENERS.command_listeners[:]
         self.__server_listeners = _LISTENERS.server_listeners[:]
-        self.__server_heartbeat_listeners = _LISTENERS.server_heartbeat_listeners[:]
+        lst = _LISTENERS.server_heartbeat_listeners
+        self.__server_heartbeat_listeners = lst[:]
         self.__topology_listeners = _LISTENERS.topology_listeners[:]
         if listeners is not None:
             for lst in listeners:

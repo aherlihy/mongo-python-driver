@@ -64,7 +64,7 @@ class Monitor(object):
             name="pymongo_server_monitor_thread")
 
         self._executor = executor
-        
+
         # Avoid cycles. When self or topology is freed, stop executor soon.
         self_ref = weakref.ref(self, executor.close)
         self._topology = weakref.proxy(topology, executor.close)

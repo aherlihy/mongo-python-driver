@@ -116,7 +116,7 @@ class ClientContext(object):
             client = pymongo.MongoClient(host, port,
                                          serverSelectionTimeoutMS=100)
             client.admin.command('ismaster')  # Can we connect?
-            
+
             # If so, then reset client to defaults.
             self.client = pymongo.MongoClient(host, port)
 

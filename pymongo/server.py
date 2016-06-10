@@ -38,7 +38,6 @@ class Server(object):
         if self._publish:
             self._events = events()
 
-
     def open(self):
         """Start monitoring, or restart after a fork.
 

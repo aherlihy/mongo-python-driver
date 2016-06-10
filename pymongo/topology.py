@@ -92,7 +92,7 @@ class Topology(object):
                 self._listeners.publish_topology_description_changed,
                 (TopologyDescription(
                     TOPOLOGY_TYPE.Unknown, {}, None, None, None),
-                self._description, self._topology_id)))
+                 self._description, self._topology_id)))
         for seed in topology_settings.seeds:
             if self._publish_server:
                 self._events.put((self._listeners.publish_server_opened,
@@ -437,7 +437,7 @@ class Topology(object):
                     monitor=monitor,
                     topology_id=self._topology_id,
                     listeners=self._listeners,
-                    events= weak)
+                    events=weak)
 
                 self._servers[address] = server
                 server.open()
