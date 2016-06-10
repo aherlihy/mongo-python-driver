@@ -16,16 +16,15 @@
 
 import sys
 import threading
-import time
 
 sys.path[0:0] = [""]
 
-from pymongo import monitoring
+from pymongo import monitoring, common
 from pymongo.errors import ConnectionFailure
 from pymongo.ismaster import IsMaster
 from pymongo.monitor import Monitor
-from test import unittest
-from test.utils import HeartbeatEventListener, single_client
+from test import unittest, client_knobs
+from test.utils import HeartbeatEventListener, single_client, wait_until
 
 sys.path[0:0] = [""]
 
@@ -69,18 +68,25 @@ class TestHeartbeatMonitoring(unittest.TestCase):
         monitoring._LISTENERS = cls.saved_listeners
 
     def create_mock_monitor(self, responses, uri, expected_results):
-        class MockMonitor(Monitor):
-            def _check_with_socket(self, sock_info):
-                if isinstance(responses[1], Exception):
-                    raise responses[1]
-                return IsMaster(responses[1]), 99
+        with client_knobs(heartbeat_frequency=0.1):
+            # TODO: add this to "client_knobs"
+            common.EVENTS_QUEUE_FREQUENCY = 0.1
 
-        m = single_client(h=uri,
-                          event_listeners=(self.all_listener,),
-                          _monitor_class=MockMonitor,
-                          _pool_class=MockPool
-                          )
-        time.sleep(7)
+            class MockMonitor(Monitor):
+                def _check_with_socket(self, sock_info):
+                    if isinstance(responses[1], Exception):
+                        raise responses[1]
+                    return IsMaster(responses[1]), 99
+
+            m = single_client(h=uri,
+                              event_listeners=(self.all_listener,),
+                              _monitor_class=MockMonitor,
+                              _pool_class=MockPool
+                              )
+
+        expected_len = len(expected_results)
+        wait_until(lambda: len(self.all_listener.results) == expected_len,
+                   "publish all events", timeout=15)
 
         try:
             for i in range(len(expected_results)):

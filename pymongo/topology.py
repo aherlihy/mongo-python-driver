@@ -16,7 +16,6 @@
 
 import os
 import random
-import sys
 import threading
 import warnings
 import weakref
@@ -42,20 +41,22 @@ from pymongo.server_selectors import (any_server_selector,
                                       secondary_server_selector,
                                       writable_server_selector)
 
-def events_queue_ref(queue):
+
+def process_events_queue(queue):
+    q = queue()
+    if not q:
+        return False  # Cancel PeriodicExecutor.
+
     while True:
         try:
-            q = queue()
-            event = q.get(timeout=1)
+            event = q.get_nowait()
         except Queue.Empty:
-            pass
+            break
         else:
             fn, args = event
-            try:
-                fn(*args)
-            except Exception:
-                # Exception from user code.
-                pass
+            fn(*args)
+
+    return True  # Continue PeriodicExecutor.
 
 
 class Topology(object):
@@ -97,7 +98,6 @@ class Topology(object):
                 self._events.put((self._listeners.publish_server_opened,
                                  (seed, self._topology_id)))
 
-
         # Store the seed list to help diagnose errors in _error_message().
         self._seed_addresses = list(topology_description.server_descriptions())
         self._opened = False
@@ -108,10 +108,7 @@ class Topology(object):
 
         if self._publish_server or self._publish_tp:
             def target():
-                if weak is None:
-                    return False  # Stop the executor.
-                events_queue_ref(weak)
-                return True
+                return process_events_queue(weak)
 
             executor = periodic_executor.PeriodicExecutor(
                 interval=common.EVENTS_QUEUE_FREQUENCY,
@@ -251,7 +248,7 @@ class Topology(object):
                     self._events.put((
                         self._listeners.publish_server_description_changed,
                         (old_server_description, server_description,
-                        server_description.address, self._topology_id)))
+                         server_description.address, self._topology_id)))
 
                 self._description = updated_topology_description(
                     self._description, server_description)
@@ -353,7 +350,6 @@ class Topology(object):
                               (self._topology_id,)))
         if self._publish_server or self._publish_tp:
             self.__events_executor.close()
-
 
     @property
     def description(self):
