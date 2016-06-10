@@ -68,10 +68,7 @@ class TestHeartbeatMonitoring(unittest.TestCase):
         monitoring._LISTENERS = cls.saved_listeners
 
     def create_mock_monitor(self, responses, uri, expected_results):
-        with client_knobs(heartbeat_frequency=0.1):
-            # TODO: add this to "client_knobs"
-            common.EVENTS_QUEUE_FREQUENCY = 0.1
-
+        with client_knobs(heartbeat_frequency=0.1, events_queue_frequency=0.1):
             class MockMonitor(Monitor):
                 def _check_with_socket(self, sock_info):
                     if isinstance(responses[1], Exception):
@@ -84,9 +81,9 @@ class TestHeartbeatMonitoring(unittest.TestCase):
                               _pool_class=MockPool
                               )
 
-        expected_len = len(expected_results)
-        wait_until(lambda: len(self.all_listener.results) == expected_len,
-                   "publish all events", timeout=15)
+            expected_len = len(expected_results)
+            wait_until(lambda: len(self.all_listener.results) == expected_len,
+                       "publish all events", timeout=15)
 
         try:
             for i in range(len(expected_results)):
