@@ -209,8 +209,8 @@ class SocketInfo(object):
             return command(self.sock, dbname, spec, slave_ok,
                            self.is_mongos, read_preference, codec_options,
                            check, allowable_errors, self.address,
-                           check_keys, self.listeners,
-                           self.max_bson_size, read_concern)
+                           check_keys, self.listeners, self.max_bson_size,
+                           read_concern)
         except OperationFailure:
             raise
         # Catch socket.error, KeyboardInterrupt, etc. and close ourselves.

@@ -180,7 +180,7 @@ def get_command_line(client):
 
 def server_started_with_option(client, cmdline_opt, config_opt):
     """Check if the server was started with a particular option.
-    
+
     :Parameters:
       - `cmdline_opt`: The command line option (i.e. --nojournal)
       - `config_opt`: The config file option (i.e. nojournal)

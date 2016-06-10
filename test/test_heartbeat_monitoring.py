@@ -19,7 +19,7 @@ import threading
 
 sys.path[0:0] = [""]
 
-from pymongo import monitoring, common
+from pymongo import monitoring
 from pymongo.errors import ConnectionFailure
 from pymongo.ismaster import IsMaster
 from pymongo.monitor import Monitor

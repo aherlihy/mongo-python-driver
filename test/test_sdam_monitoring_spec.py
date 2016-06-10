@@ -22,7 +22,6 @@ import weakref
 sys.path[0:0] = [""]
 
 from bson.json_util import object_hook
-from pymongo import common
 from pymongo import monitoring
 from pymongo import periodic_executor
 from pymongo.ismaster import IsMaster
