@@ -960,7 +960,8 @@ class MongoClient(common.BaseObject):
 
     # This method is run periodically by a background thread.
     def _process_periodic_tasks(self):
-        """Process any pending kill cursors requests."""
+        """Process any pending kill cursors requests and
+        maintain connection pool parameters."""
         address_to_cursor_ids = defaultdict(list)
 
         # Other threads or the GC may append to the queue concurrently.
@@ -1032,7 +1033,7 @@ class MongoClient(common.BaseObject):
                                     duration, reply, 'killCursors', request_id,
                                     address)
 
-                except ConnectionFailure:
+                except Exception:
                     helpers._handle_exception()
         try:
             self._topology.update_pool()

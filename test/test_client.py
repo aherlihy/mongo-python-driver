@@ -258,7 +258,6 @@ class TestClient(IntegrationTest):
                 self.assertEqual(sock_info, new_sock_info)
             self.assertEqual(1, len(server._pool.sockets))
 
-
     def test_constants(self):
         # Set bad defaults.
         MongoClient.HOST = "somedomainthatdoesntexist.org"

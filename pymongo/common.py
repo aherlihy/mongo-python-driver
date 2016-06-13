@@ -447,7 +447,7 @@ VALIDATORS = {
     'uuidrepresentation': validate_uuid_representation,
     'connect': validate_boolean,
     'event_listeners': _validate_event_listeners,
-    'maxidletimems': validate_positive_float_or_zero,
+    'maxidletimems': validate_timeout_or_none,
     'minpoolsize': validate_non_negative_integer
 }
 

@@ -66,12 +66,14 @@ def _raise_connection_failure(address, error):
 
 class PoolOptions(object):
 
-    __slots__ = ('__max_pool_size', '__min_pool_size', '__max_idle_time_ms', '__connect_timeout', '__socket_timeout',
+    __slots__ = ('__max_pool_size', '__min_pool_size', '__max_idle_time_ms',
+                 '__connect_timeout', '__socket_timeout',
                  '__wait_queue_timeout', '__wait_queue_multiple',
                  '__ssl_context', '__ssl_match_hostname', '__socket_keepalive',
                  '__event_listeners')
 
-    def __init__(self, max_pool_size=100, min_pool_size=0, max_idle_time_ms=None, connect_timeout=None,
+    def __init__(self, max_pool_size=100, min_pool_size=0,
+                 max_idle_time_ms=None, connect_timeout=None,
                  socket_timeout=None, wait_queue_timeout=None,
                  wait_queue_multiple=None, ssl_context=None,
                  ssl_match_hostname=True, socket_keepalive=False,
@@ -479,7 +481,7 @@ class Pool:
 
         self.sockets = set()
         self.lock = threading.Lock()
-        self.active_sockets = 0
+        self.existing_sockets = 0
 
         # Keep track of resets, so we notice sockets created before the most
         # recent reset and close them.
@@ -504,7 +506,7 @@ class Pool:
             self.pool_id += 1
             self.pid = os.getpid()
             sockets, self.sockets = self.sockets, set()
-            self.active_sockets = 0
+            self.existing_sockets = 0
 
         for sock_info in sockets:
             sock_info.close()
@@ -518,10 +520,10 @@ class Pool:
                         self.sockets.remove(sock_info)
                         sock_info.close()
 
-        while len(self.sockets) + self.active_sockets < self.opts.min_pool_size:
+        while self.existing_sockets + len(
+                self.sockets) < self.opts.min_pool_size:
             sock_info = self.connect()
             with self.lock:
-                self.active_sockets -= 1  # this socket is not active
                 self.sockets.add(sock_info)
 
     def connect(self):
@@ -542,8 +544,6 @@ class Pool:
                                             DEFAULT_CODEC_OPTIONS))
             else:
                 ismaster = None
-            with self.lock:
-                self.active_sockets += 1
             return SocketInfo(sock, self, ismaster, self.address)
         except socket.error as error:
             if sock is not None:
@@ -599,6 +599,8 @@ class Pool:
         if not self._socket_semaphore.acquire(
                 True, self.opts.wait_queue_timeout):
             self._raise_wait_queue_timeout()
+        with self.lock:
+            self.existing_sockets += 1
 
         # We've now acquired the semaphore and must release it on error.
         try:
@@ -623,6 +625,8 @@ class Pool:
 
         except:
             self._socket_semaphore.release()
+            with self.lock:
+                self.existing_sockets -= 1
             raise
 
         sock_info.last_checkout = _time()
@@ -633,8 +637,6 @@ class Pool:
         if self.pid != os.getpid():
             self.reset()
         else:
-            with self.lock:
-                self.active_sockets -= 1
             if sock_info.pool_id != self.pool_id:
                 sock_info.close()
             elif not sock_info.closed:
@@ -642,6 +644,8 @@ class Pool:
                     self.sockets.add(sock_info)
 
         self._socket_semaphore.release()
+        with self.lock:
+            self.existing_sockets -= 1
 
     def _check(self, sock_info):
         """This side-effecty function checks if this pool has been reset since
@@ -669,8 +673,6 @@ class Pool:
                 error = True
 
         if not error:
-            with self.lock:
-                self.active_sockets += 1
             return sock_info
         else:
             return self.connect()

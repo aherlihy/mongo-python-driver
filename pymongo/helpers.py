@@ -349,4 +349,3 @@ def _handle_exception():
             pass
         finally:
             del einfo
-
