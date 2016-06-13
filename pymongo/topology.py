@@ -42,8 +42,8 @@ from pymongo.server_selectors import (any_server_selector,
                                       writable_server_selector)
 
 
-def process_events_queue(queue):
-    q = queue()
+def process_events_queue(queue_ref):
+    q = queue_ref()
     if not q:
         return False  # Cancel PeriodicExecutor.
 

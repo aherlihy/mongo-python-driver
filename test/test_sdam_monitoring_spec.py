@@ -31,7 +31,9 @@ from pymongo.server_description import ServerDescription
 from pymongo.server_type import SERVER_TYPE
 from pymongo.topology import TOPOLOGY_TYPE
 from test import unittest, client_context, client_knobs
-from test.utils import AllEventListener, single_client, wait_until
+from test.utils import (ServerAndTopologyEventListener,
+                        single_client,
+                        wait_until)
 
 # Location of JSON test specifications.
 _TEST_PATH = os.path.join(
@@ -169,7 +171,7 @@ class TestAllScenarios(unittest.TestCase):
     @classmethod
     @client_context.require_connection
     def setUp(cls):
-        cls.all_listener = AllEventListener()
+        cls.all_listener = ServerAndTopologyEventListener()
         cls.saved_listeners = monitoring._LISTENERS
         monitoring._LISTENERS = monitoring._Listeners([], [], [], [])
 
