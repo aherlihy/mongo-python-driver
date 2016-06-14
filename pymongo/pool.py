@@ -481,7 +481,7 @@ class Pool:
 
         self.sockets = set()
         self.lock = threading.Lock()
-        self.existing_sockets = 0
+        self.active_sockets = 0
 
         # Keep track of resets, so we notice sockets created before the most
         # recent reset and close them.
@@ -506,7 +506,7 @@ class Pool:
             self.pool_id += 1
             self.pid = os.getpid()
             sockets, self.sockets = self.sockets, set()
-            self.existing_sockets = 0
+            self.active_sockets = 0
 
         for sock_info in sockets:
             sock_info.close()
@@ -520,7 +520,7 @@ class Pool:
                         self.sockets.remove(sock_info)
                         sock_info.close()
 
-        while self.existing_sockets + len(
+        while self.active_sockets + len(
                 self.sockets) < self.opts.min_pool_size:
             sock_info = self.connect()
             with self.lock:
@@ -600,7 +600,7 @@ class Pool:
                 True, self.opts.wait_queue_timeout):
             self._raise_wait_queue_timeout()
         with self.lock:
-            self.existing_sockets += 1
+            self.active_sockets += 1
 
         # We've now acquired the semaphore and must release it on error.
         try:
@@ -626,7 +626,7 @@ class Pool:
         except:
             self._socket_semaphore.release()
             with self.lock:
-                self.existing_sockets -= 1
+                self.active_sockets -= 1
             raise
 
         sock_info.last_checkout = _time()
@@ -645,7 +645,7 @@ class Pool:
 
         self._socket_semaphore.release()
         with self.lock:
-            self.existing_sockets -= 1
+            self.active_sockets -= 1
 
     def _check(self, sock_info):
         """This side-effecty function checks if this pool has been reset since
