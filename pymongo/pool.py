@@ -520,8 +520,7 @@ class Pool:
                         self.sockets.remove(sock_info)
                         sock_info.close()
 
-        while self.active_sockets + len(
-                self.sockets) < self.opts.min_pool_size:
+        while len(self.sockets) + self.active_sockets < self.opts.min_pool_size:
             sock_info = self.connect()
             with self.lock:
                 self.sockets.add(sock_info)
