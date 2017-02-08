@@ -190,11 +190,12 @@ class Monitor(object):
         raw_response = sock_info.receive_message(1, request_id)
         result = helpers._unpack_response(raw_response)
 
-        isM = result['data'][0]
+        is_m = result['data'][0]
         if self._topology._settings.use_seed_list:
-            seed_list = ["{}:{}".format(*x) for x in self._topology._settings.seeds]
+            seed_list = ["{}:{}".format(*x)
+                         for x in self._topology._settings.seeds]
 
-            for h in isM['hosts'][:]:
+            for h in is_m['hosts'][:]:
                 if h not in seed_list:
-                    isM['hosts'].remove(h)
-        return IsMaster(isM), _time() - start
+                    is_m['hosts'].remove(h)
+        return IsMaster(is_m), _time() - start

@@ -106,7 +106,7 @@ class TopologySettings(object):
 
     @property
     def use_seed_list(self):
-        """Use only the seed list given by the user, do not discover new instances"""
+        """Use only the seed list given by the user"""
         return self._use_seed_list
 
     def get_topology_type(self):
