@@ -24,6 +24,7 @@ from pymongo.ismaster import IsMaster
 from pymongo.monotonic import time as _time
 from pymongo.read_preferences import MovingAverage
 from pymongo.server_description import ServerDescription
+import pprint
 
 
 class Monitor(object):
@@ -189,4 +190,17 @@ class Monitor(object):
         sock_info.send_message(msg, max_doc_size)
         raw_response = sock_info.receive_message(1, request_id)
         result = helpers._unpack_response(raw_response)
+
+        seed_list = [str(x[0]+':'+str(x[1])) for x in self._topology._settings.seeds]
+
+        print "SEED LIST", seed_list
+        x = pprint.pformat(result['data'][0]['hosts'], 4)
+        print "isMASTER BEFORE", x
+        new_hosts = []
+        for h in result['data'][0]['hosts']:
+            if h in seed_list:
+                new_hosts.append(h)
+        result['data'][0]['hosts'] = new_hosts
+        x = pprint.pformat(result['data'][0]['hosts'], 4)
+        print "isMASTER AFTER", x
         return IsMaster(result['data'][0]), _time() - start
