@@ -62,6 +62,7 @@ def process_events_queue(queue_ref):
 class Topology(object):
     """Monitor a topology of one or more servers."""
     def __init__(self, topology_settings):
+        self._use_seed_list = topology_settings.use_seed_list
         self._topology_id = topology_settings._topology_id
         self._listeners = topology_settings._pool_options.event_listeners
         pub = self._listeners is not None

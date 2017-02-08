@@ -209,6 +209,8 @@ class MongoClient(common.BaseObject):
             profile collections.
           - `event_listeners`: a list or tuple of event listeners. See
             :mod:`~pymongo.monitoring` for details.
+          - `use_seed_list`: do not connect to discovered addresses, use
+            only the seed list given by the user.
 
           | **Write Concern options:**
           | (Only set if passed. No default values.)
@@ -454,7 +456,8 @@ class MongoClient(common.BaseObject):
             condition_class=condition_class,
             local_threshold_ms=options.local_threshold_ms,
             server_selection_timeout=options.server_selection_timeout,
-            heartbeat_frequency=options.heartbeat_frequency)
+            heartbeat_frequency=options.heartbeat_frequency,
+            use_seed_list=opts.get("use_seed_list", False))
 
         self._topology = Topology(self._topology_settings)
         if connect:
