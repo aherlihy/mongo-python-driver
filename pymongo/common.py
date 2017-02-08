@@ -130,7 +130,7 @@ def validate_boolean(option, value):
     """Validates that 'value' is True or False."""
     if isinstance(value, bool):
         return value
-    raise TypeError("%s must be True or False" % (option,))
+    raise TypeError("%s must be True or False: %s" % (option,str(value)))
 
 
 def validate_boolean_or_string(option, value):
@@ -494,7 +494,7 @@ URI_VALIDATORS = {
     'minpoolsize': validate_non_negative_integer,
     'appname': validate_appname_or_none,
     'unicode_decode_error_handler': validate_unicode_decode_error_handler,
-    'use_seed_list': validate_boolean
+    'useseedlist': validate_boolean_or_string
 }
 
 TIMEOUT_VALIDATORS = {

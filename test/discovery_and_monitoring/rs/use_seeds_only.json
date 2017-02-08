@@ -1,0 +1,50 @@
+{
+    "description": "Replica set discovery using only seed list",
+    "phases": [
+        {
+            "outcome": {
+                "servers": {
+                    "a:27017": {
+                        "setName": "rs",
+                        "type": "RSPrimary"
+                    },
+                    "b:27017": {
+                        "setName": "rs",
+                        "type": "Secondary"
+                    }
+                },
+                "setName": "rs",
+                "topologyType": "ReplicaSetWithPrimary"
+            },
+            "responses": [
+                [
+                    "a:27017",
+                    {
+                        "hosts": [
+                            "a:27017",
+                            "b:27017",
+                            "c:27017"
+                        ],
+                        "ismaster": true,
+                        "ok": 1,
+                        "setName": "rs"
+                    }
+                ],
+                [
+                    "b:27017",
+                    {
+                        "hosts": [
+                            "a:27017",
+                            "b:27017",
+                            "c:27017"
+                        ],
+                        "ismaster": false,
+                        "ok": 1,
+                        "setName": "rs"
+                    }
+                ]
+            ]
+        }
+    ],
+    "uri": "mongodb://a,b/?replicaSet=rs&useSeedList=true"
+}

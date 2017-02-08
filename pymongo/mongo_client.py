@@ -457,7 +457,7 @@ class MongoClient(common.BaseObject):
             local_threshold_ms=options.local_threshold_ms,
             server_selection_timeout=options.server_selection_timeout,
             heartbeat_frequency=options.heartbeat_frequency,
-            use_seed_list=opts.get("use_seed_list", False))
+            use_seed_list=opts.get("useseedlist", False))
 
         self._topology = Topology(self._topology_settings)
         if connect:

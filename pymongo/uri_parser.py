@@ -191,7 +191,6 @@ def _parse_options(opts, delim):
             options.pop("wtimeout")
         warnings.warn("Option wtimeout is deprecated, use 'wtimeoutMS'"
                       " instead")
-
     return options
 
 
