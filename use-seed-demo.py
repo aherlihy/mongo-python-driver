@@ -144,10 +144,12 @@ monitoring.register(TopologyLogger())
 client = MongoClient(connection_string)
 
 
-# Run for 10 seconds
-message = colored('This useSeedList=true demo will run for 30 seconds', 'cyan')
+# Run for at least this long, in seconds
+run_for = 10
+message = colored('This useSeedList=true demo will run for {} seconds'
+                  .format(run_for), 'cyan')
 print(message)
 count = 0
-while count < 10:
+while count < run_for:
     count += 1
     time.sleep(1)
