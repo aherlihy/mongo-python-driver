@@ -45,7 +45,11 @@ if '-h' in sys.argv or '--help' in sys.argv:
 if len(sys.argv) > 1:
     connection_string = sys.argv[1]
 else:
-    connection_string = 'mongodb://localhost:27017/?useSeedList=true'
+    connection_string = 'mongodb://localhost:27018/?' + '&'.join((
+        'replicaSet=replset',
+        'readPreference=primaryPreferred',
+        'useSeedList=true',
+    ))
 
 
 class CommandLogger(monitoring.CommandListener):
@@ -146,10 +150,12 @@ client = MongoClient(connection_string)
 
 # Run for at least this long, in seconds
 run_for = 10
-message = colored('This useSeedList=true demo will run for {} seconds'
+message = colored('This demo will run for {} seconds'
                   .format(run_for), 'cyan')
 print(message)
 count = 0
 while count < run_for:
     count += 1
     time.sleep(1)
+
+client.test.test.find_one()

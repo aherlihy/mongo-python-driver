@@ -97,6 +97,7 @@ def create_mock_topology(uri, monitor_class=MockMonitor):
 
 def got_ismaster(topology, server_address, ismaster_response):
     ismaster_response = Monitor._apply_topology_settings(
+        server_address,
         ismaster_response,
         topology._settings.use_seed_list,
         topology._settings.seeds,

@@ -163,6 +163,7 @@ class Monitor(object):
                 sock_info, metadata=metadata)
             self._avg_round_trip_time.add_sample(round_trip_time)
             response_after_topology = self._apply_topology_settings(
+                address,
                 response_dict,
                 self._settings.use_seed_list,
                 self._settings.seeds)
@@ -178,11 +179,12 @@ class Monitor(object):
             return sd
 
     @staticmethod
-    def _apply_topology_settings(response, use_seed_list, seeds):
+    def _apply_topology_settings(address, response, use_seed_list, seeds):
         """
         Given a list of seeds, applies the use_seed_list option
         to a response dictionary.
 
+        :param address: The server address we originally sent our request on.
         :param response: A response dictionary derived from an ismaster call
             on a mongod/mongos.
         :param use_seed_list: Whether the client has chosen to force using
@@ -192,6 +194,10 @@ class Monitor(object):
         """
         if use_seed_list:
             seed_list = ['{}:{}'.format(*host_port) for host_port in seeds]
+            # Also allow current "ismaster.me", so we can discover other
+            # interfaces of the seed list and actually get a data connection
+            me = response.get('me', '{}:{}'.format(*address))
+            seed_list.append(me)
             if 'hosts' in response:
                 for host in response['hosts'][:]:
                     if host not in seed_list:
