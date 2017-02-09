@@ -1,0 +1,66 @@
+{
+    "description": "Replica set discovery using only seed list with different public and private interfaces",
+    "phases": [
+        {
+            "outcome": {
+                "servers": {
+                    "a-internal:27017": {
+                        "setName": null,
+                        "type": "Unknown"
+                    }
+                },
+                "setName": "rs",
+                "topologyType": "ReplicaSetNoPrimary"
+            },
+            "responses": [
+                [
+                    "a-public:27017",
+                    {
+                        "hosts": [
+                            "a-internal:27017",
+                            "b-internal:27017",
+                            "c-internal:27017"
+                        ],
+                        "me": "a-internal:27017",
+                        "ismaster": true,
+                        "ok": 1,
+                        "primary": "a-internal:27017",
+                        "secondary": false,
+                        "setName": "rs"
+                    }
+                ]
+            ]
+        },
+        {
+            "outcome": {
+                "servers": {
+                    "a-internal:27017": {
+                        "setName": "rs",
+                        "type": "RSPrimary"
+                    }
+                },
+                "setName": "rs",
+                "topologyType": "ReplicaSetWithPrimary"
+            },
+            "responses": [
+                [
+                    "a-internal:27017",
+                    {
+                        "hosts": [
+                            "a-internal:27017",
+                            "b-internal:27017",
+                            "c-internal:27017"
+                        ],
+                        "me": "a-internal:27017",
+                        "ismaster": true,
+                        "ok": 1,
+                        "primary": "a-internal:27017",
+                        "secondary": false,
+                        "setName": "rs"
+                    }
+                ]
+            ]
+        }
+    ],
+    "uri": "mongodb://a-public/?replicaSet=rs&useSeedList=true"
+}
