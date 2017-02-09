@@ -196,7 +196,7 @@ class Monitor(object):
             for h in is_m['hosts'][:]:
                 if h not in seed_list:
                     is_m['hosts'].remove(h)
-            if is_m['primary'] not in seed_list:
+            if 'primary' in is_m and is_m['primary'] not in seed_list:
                 del is_m['primary']
         return is_m
 
