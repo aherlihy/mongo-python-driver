@@ -135,7 +135,7 @@ class TopologyLogger(monitoring.TopologyListener):
 
 monitoring.register(CommandLogger())
 monitoring.register(ServerLogger())
-monitoring.register(HeartbeatLogger())
+# monitoring.register(HeartbeatLogger())
 monitoring.register(TopologyLogger())
 
 
