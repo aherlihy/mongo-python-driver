@@ -25,6 +25,7 @@ from pymongo import common
 from pymongo.topology import Topology
 from pymongo.topology_description import TOPOLOGY_TYPE
 from pymongo.ismaster import IsMaster
+from pymongo.monitor import Monitor
 from pymongo.server_description import ServerDescription, SERVER_TYPE
 from pymongo.settings import TopologySettings
 from pymongo.uri_parser import parse_uri
@@ -95,6 +96,11 @@ def create_mock_topology(uri, monitor_class=MockMonitor):
 
 
 def got_ismaster(topology, server_address, ismaster_response):
+    ismaster_response = Monitor._apply_topology_settings(
+        ismaster_response,
+        topology._settings.use_seed_list,
+        topology._settings.seeds,
+    )
     server_description = ServerDescription(
         server_address, IsMaster(ismaster_response), 0)
 
