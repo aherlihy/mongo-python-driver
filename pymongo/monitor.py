@@ -159,9 +159,14 @@ class Monitor(object):
         if self._publish:
             self._listeners.publish_server_heartbeat_started(address)
         with self._pool.get_socket({}) as sock_info:
-            response, round_trip_time = self._check_with_socket(
+            response_dict, round_trip_time = self._check_with_socket(
                 sock_info, metadata=metadata)
             self._avg_round_trip_time.add_sample(round_trip_time)
+            response_after_topology = self._apply_topology_settings(
+                response_dict,
+                self._settings.use_seed_list,
+                self._settings.seeds)
+            response = IsMaster(response_after_topology)
             sd = ServerDescription(
                 address=address,
                 ismaster=response,
@@ -172,8 +177,31 @@ class Monitor(object):
 
             return sd
 
+    @staticmethod
+    def _apply_topology_settings(response, use_seed_list, seeds):
+        """
+        Given a list of seeds, applies the use_seed_list option
+        to a response dictionary.
+
+        :param response: A response dictionary derived from an ismaster call
+            on a mongod/mongos.
+        :param use_seed_list: Whether the client has chosen to force using
+            only a pre-specified seed list of servers.
+        :param seeds: The seed list to use.
+        :return: A pymongo.ismaster.IsMaster instance.
+        """
+        is_m = response
+        if use_seed_list:
+            seed_list = ['{}:{}'.format(*x) for x in seeds]
+            for h in is_m['hosts'][:]:
+                if h not in seed_list:
+                    is_m['hosts'].remove(h)
+            if is_m['primary'] not in seed_list:
+                del is_m['primary']
+        return is_m
+
     def _check_with_socket(self, sock_info, metadata=None):
-        """Return (IsMaster, round_trip_time).
+        """Return (response_dict, round_trip_time).
 
         Can raise ConnectionFailure or OperationFailure.
         """
@@ -189,15 +217,5 @@ class Monitor(object):
         sock_info.send_message(msg, max_doc_size)
         raw_response = sock_info.receive_message(1, request_id)
         result = helpers._unpack_response(raw_response)
-
-        is_m = result['data'][0]
-        if self._topology._settings.use_seed_list:
-            seed_list = ["{}:{}".format(*x)
-                         for x in self._topology._settings.seeds]
-
-            for h in is_m['hosts'][:]:
-                if h not in seed_list:
-                    is_m['hosts'].remove(h)
-            if is_m['primary'] not in seed_list:
-                del is_m['primary']
-        return IsMaster(is_m), _time() - start
+        response_dict = result['data'][0]
+        return response_dict, _time() - start
