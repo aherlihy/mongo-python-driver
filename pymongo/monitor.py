@@ -194,16 +194,29 @@ class Monitor(object):
         """
         if use_seed_list:
             seed_list = ['{}:{}'.format(*host_port) for host_port in seeds]
-            # Also allow current "ismaster.me", so we can discover other
-            # interfaces of the seed list and actually get a data connection
-            me = response.get('me', '{}:{}'.format(*address))
-            seed_list.append(me)
+            # In order to skip phase 2 of discovery, we need to pretend the
+            # ismaster output came directly from the server_address
+            addr = '{}:{}'.format(*address)
+            me = response.get('me', addr)
+            seed_and_self_list = seed_list[:]
+            seed_and_self_list.append(me)
             if 'hosts' in response:
-                for host in response['hosts'][:]:
-                    if host not in seed_list:
-                        response['hosts'].remove(host)
-            if 'primary' in response and response['primary'] not in seed_list:
-                del response['primary']
+                new_hosts = []
+                for host in response['hosts']:
+                    if host == me:
+                        # Convert me back to original addr
+                        new_hosts.append(addr)
+                    if host in seed_list:
+                        new_hosts.append(host)
+                response['hosts'] = new_hosts
+            if 'primary' in response:
+                if response['primary'] == me:
+                    # Replace me with addr
+                    response['primary'] = addr
+                if response['primary'] not in seed_list:
+                    del response['primary']
+            if 'me' in response:
+                response['me'] = addr
         return response
 
     def _check_with_socket(self, sock_info, metadata=None):

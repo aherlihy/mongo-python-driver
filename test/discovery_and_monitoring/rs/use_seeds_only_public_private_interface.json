@@ -4,13 +4,13 @@
         {
             "outcome": {
                 "servers": {
-                    "a-internal:27017": {
-                        "setName": null,
-                        "type": "Unknown"
+                    "a-public:27017": {
+                        "setName": "rs",
+                        "type": "RSPrimary"
                     }
                 },
                 "setName": "rs",
-                "topologyType": "ReplicaSetNoPrimary"
+                "topologyType": "ReplicaSetWithPrimary"
             },
             "responses": [
                 [
@@ -30,37 +30,7 @@
                     }
                 ]
             ]
-        },
-        {
-            "outcome": {
-                "servers": {
-                    "a-internal:27017": {
-                        "setName": "rs",
-                        "type": "RSPrimary"
-                    }
-                },
-                "setName": "rs",
-                "topologyType": "ReplicaSetWithPrimary"
-            },
-            "responses": [
-                [
-                    "a-internal:27017",
-                    {
-                        "hosts": [
-                            "a-internal:27017",
-                            "b-internal:27017",
-                            "c-internal:27017"
-                        ],
-                        "me": "a-internal:27017",
-                        "ismaster": true,
-                        "ok": 1,
-                        "primary": "a-internal:27017",
-                        "secondary": false,
-                        "setName": "rs"
-                    }
-                ]
-            ]
         }
     ],
-    "uri": "mongodb://a-public/?replicaSet=rs&useSeedList=true"
+    "uri": "mongodb://a-public:27017/?replicaSet=rs&useSeedList=true"
 }
