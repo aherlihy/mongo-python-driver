@@ -130,7 +130,7 @@ def validate_boolean(option, value):
     """Validates that 'value' is True or False."""
     if isinstance(value, bool):
         return value
-    raise TypeError("%s must be True or False: %s" % (option,str(value)))
+    raise TypeError("%s must be True or False" % (option,))
 
 
 def validate_boolean_or_string(option, value):

@@ -37,7 +37,6 @@ class TopologySettings(object):
                  server_selection_timeout=SERVER_SELECTION_TIMEOUT,
                  heartbeat_frequency=common.HEARTBEAT_FREQUENCY,
                  use_seed_list=False):
-        print "USESEEDLIST=", use_seed_list
         """Represent MongoClient's configuration.
 
         Take a list of (host, port) pairs and optional replica set name.

@@ -89,7 +89,6 @@ def create_mock_topology(uri, monitor_class=MockMonitor):
         pool_class=MockPool,
         monitor_class=monitor_class,
         use_seed_list=parsed_uri['options'].get('useseedlist', False))
-    print 'sanity', topology_settings.use_seed_list
     c = Topology(topology_settings)
     c.open()
     return c

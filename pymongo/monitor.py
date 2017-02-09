@@ -191,14 +191,7 @@ class Monitor(object):
         result = helpers._unpack_response(raw_response)
 
         is_m = result['data'][0]
-
-        # iimport pdb; pdb.set_trace();
-        # import pprint
-        # pprint.pprint(is_m)
-        # print "ID IN MONITOR", id(self._topology._settings)i
-        print 'sanity2', self._topology._settings.use_seed_list
         if self._topology._settings.use_seed_list:
-            print "HERE"
             seed_list = ["{}:{}".format(*x)
                          for x in self._topology._settings.seeds]
 
