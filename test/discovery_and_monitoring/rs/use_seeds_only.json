@@ -10,7 +10,7 @@
                     },
                     "b:27017": {
                         "setName": "rs",
-                        "type": "Secondary"
+                        "type": "RSSecondary"
                     }
                 },
                 "setName": "rs",
@@ -27,6 +27,7 @@
                         ],
                         "ismaster": true,
                         "ok": 1,
+                        "secondary": false,
                         "setName": "rs"
                     }
                 ],
@@ -40,6 +41,7 @@
                         ],
                         "ismaster": false,
                         "ok": 1,
+                        "secondary": true,
                         "setName": "rs"
                     }
                 ]
