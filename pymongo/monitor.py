@@ -192,9 +192,9 @@ class Monitor(object):
         """
         if use_seed_list:
             seed_list = ['{}:{}'.format(*x) for x in seeds]
-            for h in response['hosts'][:]:
-                if h not in seed_list:
-                    response['hosts'].remove(h)
+            for host in response['hosts'][:]:
+                if host not in seed_list:
+                    response['hosts'].remove(host)
             if 'primary' in response and response['primary'] not in seed_list:
                 del response['primary']
         return response
