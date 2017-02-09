@@ -494,7 +494,7 @@ URI_VALIDATORS = {
     'minpoolsize': validate_non_negative_integer,
     'appname': validate_appname_or_none,
     'unicode_decode_error_handler': validate_unicode_decode_error_handler,
-    'useseedlist': validate_boolean_or_string
+    'useseedlist': validate_boolean_or_string,
 }
 
 TIMEOUT_VALIDATORS = {
