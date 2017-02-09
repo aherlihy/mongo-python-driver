@@ -1,0 +1,28 @@
+{
+    "description": "Standalone with use seed list",
+    "phases": [
+        {
+            "responses": [
+                [
+                    "a:27017",
+                    {
+                        "ok": 1,
+                        "ismaster": true,
+                        "setName": "rs"
+                    }
+                ]
+            ],
+            "outcome": {
+                "servers": {
+                    "a:27017": {
+                        "type": "RSPrimary",
+                        "setName": "rs"
+                    }
+                },
+                "topologyType": "Single",
+                "setName": null
+            }
+        }
+    ],
+    "uri": "mongodb://a/?useSeedList=true"
+}
