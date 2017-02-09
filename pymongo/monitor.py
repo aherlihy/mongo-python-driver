@@ -191,7 +191,7 @@ class Monitor(object):
         :return: A pymongo.ismaster.IsMaster instance.
         """
         if use_seed_list:
-            seed_list = ['{}:{}'.format(*x) for x in seeds]
+            seed_list = ['{}:{}'.format(*host_port) for host_port in seeds]
             for host in response['hosts'][:]:
                 if host not in seed_list:
                     response['hosts'].remove(host)
