@@ -190,15 +190,14 @@ class Monitor(object):
         :param seeds: The seed list to use.
         :return: A pymongo.ismaster.IsMaster instance.
         """
-        is_m = response
         if use_seed_list:
             seed_list = ['{}:{}'.format(*x) for x in seeds]
-            for h in is_m['hosts'][:]:
+            for h in response['hosts'][:]:
                 if h not in seed_list:
-                    is_m['hosts'].remove(h)
-            if 'primary' in is_m and is_m['primary'] not in seed_list:
-                del is_m['primary']
-        return is_m
+                    response['hosts'].remove(h)
+            if 'primary' in response and response['primary'] not in seed_list:
+                del response['primary']
+        return response
 
     def _check_with_socket(self, sock_info, metadata=None):
         """Return (response_dict, round_trip_time).
