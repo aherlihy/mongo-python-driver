@@ -45,7 +45,7 @@ if '-h' in sys.argv or '--help' in sys.argv:
 if len(sys.argv) > 1:
     connection_string = sys.argv[1]
 else:
-    connection_string = 'mongodb://localhost:27018/?' + '&'.join((
+    connection_string = 'mongodb://localhost:27018,localhost:27019/?' + '&'.join((
         'replicaSet=replset',
         'readPreference=primaryPreferred',
         'useSeedList=true',
@@ -150,8 +150,9 @@ client = MongoClient(connection_string)
 
 # Run for at least this long, in seconds
 run_for = 10
-message = colored('This demo will run for {} seconds'
-                  .format(run_for), 'cyan')
+message = colored('This demo will run for {} seconds\n'
+                  'Used connection string: {}'
+                  .format(run_for, connection_string), 'cyan')
 print(message)
 count = 0
 while count < run_for:
