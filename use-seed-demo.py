@@ -6,8 +6,10 @@
 import logging
 import sys
 import time
+
 from pymongo import monitoring
 from pymongo import MongoClient
+from pymongo import ReadPreference
 
 # Change default logging to the console from WARNING to INFO
 logging.getLogger().setLevel(logging.INFO)
@@ -130,7 +132,11 @@ class TopologyLogger(monitoring.TopologyListener):
         # were added in PyMongo 3.4.
         if not event.new_description.has_writable_server():
             logging.warning("No writable servers available.")
-        if not event.new_description.has_readable_server():
+
+        # TODO: If the readPreference is specified in the connection string,
+        # TODO: ... should that default be remembered and used by the driver?
+        if not event.new_description.has_readable_server(
+                ReadPreference.SECONDARY_PREFERRED):
             logging.warning("No readable servers available.")
 
     def closed(self, event):
