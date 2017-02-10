@@ -166,3 +166,4 @@ while count < run_for:
     time.sleep(1)
 
 client.test.test.find_one()
+print(colored('find_one query succeeded', 'cyan'))
