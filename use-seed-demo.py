@@ -155,10 +155,9 @@ client = MongoClient(connection_string)
 
 
 # Run for at least this long, in seconds
-run_for = 10
-message = colored('This demo will run for {} seconds\n'
-                  'Used connection string: {}'
-                  .format(run_for, connection_string), 'cyan')
+run_for = 3
+message = colored('Used connection string: {}'
+                  .format(connection_string), 'cyan')
 print(message)
 count = 0
 while count < run_for:
