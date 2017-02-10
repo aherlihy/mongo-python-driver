@@ -217,6 +217,8 @@ class Monitor(object):
                     del response['primary']
             if 'me' in response:
                 response['me'] = addr
+        # TODO: Probably want to handle the edge cases of passives/arbiters too
+        # https://docs.mongodb.com/manual/reference/command/isMaster/#isMaster.passives
         return response
 
     def _check_with_socket(self, sock_info, metadata=None):
