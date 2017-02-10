@@ -11,8 +11,10 @@ python3 use-seed-demo.py "mongodb://localhost:27018/?readPreference=primaryPrefe
 2. Note that the interface changes from the "public" (localhost)
 interface provided in the connection string seed list, to whatever the mongod reports.
 
-3. So if I do something like change the "sudo vi /etc/hosts" file simulating an
-unresolvable server address for any of the reasons, like MongoDB Atlas VPC peering, that Luke discussed (and repeat):
+3. So if I do something like change the "sudo vi /etc/hosts" file, e.g.
+ 10.0.0.254       rocket.local
+simulating an unresolvable server address for any of the reasons,
+like MongoDB Atlas VPC peering, that Luke discussed (and repeat):
 python3 use-seed-demo.py "mongodb://localhost:27018/?readPreference=primaryPreferred&replicaSet=replset"
 
 4. It fails to connect at all ;-(
