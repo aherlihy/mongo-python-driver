@@ -1,0 +1,30 @@
+Planned script
+==============
+
+Peter
+-----
+Thanks Luke.
+
+1. Current behaviour is to discover all nodes
+python3 use-seed-demo.py "mongodb://localhost:27018/?readPreference=primaryPreferred&replicaSet=replset"
+
+2. Note that the interface changes from the "public" (localhost)
+interface provided in the connection string seed list, to whatever the mongod reports.
+
+3. So if I do something like change the "sudo vi /etc/hosts" file simulating an
+unresolvable server address for any of the reasons, like MongoDB Atlas VPC peering, that Luke discussed (and repeat):
+python3 use-seed-demo.py "mongodb://localhost:27018/?readPreference=primaryPreferred&replicaSet=replset"
+
+4. It fails to connect at all ;-(
+
+5. But we know we can connect :D
+So let's add a useSeedList=true to disable the discovery process:
+python3 use-seed-demo.py "mongodb://localhost:27018/?readPreference=primaryPreferred&replicaSet=replset&useSeedList=true"
+
+6. This disables the discovery process by limiting results to those in the seed list,
+and pretends the server response is the client response, allowing connections to succeed.
+It also works for multiple replica sets members:
+
+python3 use-seed-demo.py "mongodb://localhost:27018,localhost:27019/?readPreference=primaryPreferred&replicaSet=replset&useSeedList=true"
+
+And I'll now hand over to Anna to discuss using tags to enable high availability server discovery.
