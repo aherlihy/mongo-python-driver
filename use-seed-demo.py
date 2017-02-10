@@ -136,7 +136,7 @@ class TopologyLogger(monitoring.TopologyListener):
         # TODO: If the readPreference is specified in the connection string,
         # TODO: ... should that default be remembered and used by the driver?
         if not event.new_description.has_readable_server(
-                ReadPreference.SECONDARY_PREFERRED):
+                ReadPreference.PRIMARY_PREFERRED):
             logging.warning("No readable servers available.")
 
     def closed(self, event):
